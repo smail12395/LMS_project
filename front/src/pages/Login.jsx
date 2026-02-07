@@ -39,7 +39,7 @@ const Login = () => {
         if (data.success) {
           localStorage.setItem("token", data.token);
           toast.success("✅ Registered successfully!");
-          navigate("/summarize");
+          navigate("/");
         } else {
           toast.error(data.message || "❌ Registration failed");
         }

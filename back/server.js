@@ -13,6 +13,17 @@ const port = process.env.PORT || 4000
 connectDB()
 connectCloudinary()
 
+import fileUpload from "express-fileupload";
+
+
+app.use(
+  fileUpload({
+    useTempFiles: true,
+    tempFileDir: "/tmp/",
+  })
+);
+
+
 //middlewares
 app.use(express.json())
 app.use(cors())
