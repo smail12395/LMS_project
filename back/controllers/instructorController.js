@@ -226,39 +226,47 @@ export const updateCourseDetails = async (req, res) => {
 
 
 
-
-import { deleteFromCloudinary } from "../config/cloudinary.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.js";
 
 export const addCourseContent = async (req, res) => {
   try {
     const { courseId } = req.params;
     const { title, contentType, contentData } = req.body;
-    const instructorId = req.instructor.id; // ✅ FIXED
+    const instructorId = req.instructor.id;
 
     const course = await Course.findById(courseId);
-    if (!course) {
+    if (!course)
       return res.status(404).json({ success: false, message: "Course not found" });
-    }
 
-    if (course.instructor.toString() !== instructorId) {
+    if (course.instructor.toString() !== instructorId)
       return res.status(403).json({ success: false, message: "Unauthorized" });
-    }
 
     let finalContentData = contentData;
     let cloudinaryPublicId = null;
 
-    // 📤 FILE CONTENT
+    // ===== FILE VALIDATION =====
     if (req.file) {
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "lms_course_content",
-        resource_type: "auto", // image / video / pdf
-      });
+      const mime = req.file.mimetype;
 
-      finalContentData = uploadResult.secure_url;
-      cloudinaryPublicId = uploadResult.public_id;
+      const allowed = {
+        image: mime.startsWith("image/"),
+        video: mime.startsWith("video/"),
+        pdf: mime === "application/pdf",
+      };
+
+      if (!allowed[contentType]) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid file type for ${contentType}`,
+        });
+      }
+
+      // ===== CLOUDINARY UPLOAD =====
+      const upload = await uploadToCloudinary(req.file.path, contentType);
+      finalContentData = upload.secure_url;
+      cloudinaryPublicId = upload.public_id;
     }
 
-    // 🧩 CREATE CONTENT OBJECT
     const newContent = {
       title,
       contentType,
@@ -277,44 +285,36 @@ export const addCourseContent = async (req, res) => {
     });
   } catch (error) {
     console.error("ADD CONTENT ERROR:", error);
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
-
-
-
 
 export const removeCourseContent = async (req, res) => {
   try {
     const { courseId, contentIndex } = req.params;
-    const instructorId = req.instructor.id; // ✅ FIXED
+    const instructorId = req.instructor.id;
 
     const course = await Course.findById(courseId);
-    if (!course) {
+    if (!course)
       return res.status(404).json({ success: false, message: "Course not found" });
-    }
 
-    if (course.instructor.toString() !== instructorId) {
+    if (course.instructor.toString() !== instructorId)
       return res.status(403).json({ success: false, message: "Unauthorized" });
-    }
 
     const index = Number(contentIndex);
-    if (!course.content[index]) {
+    if (!course.content[index])
       return res.status(400).json({ success: false, message: "Invalid content index" });
-    }
 
     const deletedContent = course.content[index];
 
     // ☁️ Cloudinary cleanup
     if (deletedContent.cloudinaryPublicId) {
-      try {
-        await cloudinary.uploader.destroy(
-          deletedContent.cloudinaryPublicId,
-          { resource_type: "auto" }
-        );
-        console.log("☁️ Cloudinary file deleted:", deletedContent.cloudinaryPublicId);
-      } catch (err) {
-        console.warn("⚠ Cloudinary delete failed:", err.message);
+      const deleted = await deleteFromCloudinary(
+        deletedContent.cloudinaryPublicId
+      );
+
+      if (!deleted) {
+        console.warn("⚠ Cloudinary delete failed but DB continues");
       }
     }
 

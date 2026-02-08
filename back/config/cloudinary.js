@@ -10,6 +10,20 @@ const connectCloudinary = () => {
   console.log("✅ Cloudinary connected");
 };
 
+export const uploadToCloudinary = async (filePath, contentType) => {
+  const isPdf = contentType === "pdf";
+
+  const result = await cloudinary.uploader.upload(filePath, {
+    folder: "lms_course_content",
+    resource_type: isPdf ? "raw" : "auto",
+  });
+
+  return {
+    secure_url: result.secure_url,
+    public_id: result.public_id,
+  };
+};
+
 export const deleteFromCloudinary = async (publicId) => {
   try {
     const result = await cloudinary.uploader.destroy(publicId, {
@@ -17,16 +31,13 @@ export const deleteFromCloudinary = async (publicId) => {
     });
 
     if (result.result !== "ok") {
-      throw new Error(`Cloudinary deletion failed: ${result.result}`);
+      throw new Error(result.result);
     }
 
-    console.log(`[${new Date().toISOString()}] 🗑 Cloudinary deleted: ${publicId}`);
+    console.log(`🗑 Cloudinary deleted: ${publicId}`);
     return true;
   } catch (error) {
-    console.error(
-      `[${new Date().toISOString()}] ❌ Cloudinary delete error:`,
-      error.message
-    );
+    console.error("❌ Cloudinary delete error:", error.message);
     return false;
   }
 };

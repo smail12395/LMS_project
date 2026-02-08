@@ -1,7 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Document, Page, pdfjs } from "react-pdf";
+
+// ✅ REQUIRED CSS (fixes TextLayer warning)
+import "react-pdf/dist/esm/Page/TextLayer.css";
+import "react-pdf/dist/esm/Page/AnnotationLayer.css";
+
+// ✅ Correct worker for Vite + react-pdf
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 const CourseDetails = () => {
   const { courseId } = useParams();
@@ -12,20 +21,24 @@ const CourseDetails = () => {
   const [contents, setContents] = useState([]);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
-  // ===== SORT & FILTER STATES =====
-  const [sortOrder, setSortOrder] = useState("asc"); // asc | desc
+  // ===== SORT & FILTER =====
+  const [sortOrder, setSortOrder] = useState("asc");
   const [filterType, setFilterType] = useState("all");
 
-  // ===== MODAL STATES =====
+  // ===== ADD CONTENT MODAL =====
   const [showModal, setShowModal] = useState(false);
   const [contentType, setContentType] = useState("postText");
   const [title, setTitle] = useState("");
   const [textContent, setTextContent] = useState("");
   const [file, setFile] = useState(null);
-  const [uploading, setUploading] = useState(false);
+
+  // ===== PDF MODAL =====
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [numPages, setNumPages] = useState(null);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [scale, setScale] = useState(1.1);
+  const pdfRef = useRef(null);
 
   // ===== FETCH COURSE =====
   const fetchCourse = async () => {
@@ -35,13 +48,11 @@ const CourseDetails = () => {
         `${import.meta.env.VITE_BACKEND_URL}/api/instructor/courses`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       const found = res.data.data.find(c => c._id === courseId);
       setCourse(found);
       setContents(found?.content || []);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load course");
+    } catch {
+      toast.error("Failed to load course");
     } finally {
       setLoading(false);
     }
@@ -51,74 +62,11 @@ const CourseDetails = () => {
     fetchCourse();
   }, [courseId]);
 
-  // ===== EDIT COURSE =====
-  const handleChange = (e) => {
-    setCourse({ ...course, [e.target.name]: e.target.value });
-  };
-
-  const handleSave = async () => {
-    try {
-      setSaving(true);
-      await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}`,
-        {
-          name: course.name,
-          description: course.description,
-          price: course.price,
-          imageCover: course.imageCover
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      toast.success("Course updated");
-      setEditMode(false);
-    } catch {
-      toast.error("Failed to update course");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // ===== ADD CONTENT =====
-  const addContent = async () => {
-    try {
-      setUploading(true);
-      let payload;
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (contentType === "postText") {
-        payload = { contentType, title, contentData: textContent };
-      } else {
-        if (!file) return toast.error("Select a file");
-        payload = new FormData();
-        payload.append("contentType", contentType);
-        payload.append("title", title);
-        payload.append("file", file);
-      }
-
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/content`,
-        payload,
-        { headers }
-      );
-
-      toast.success("Content added");
-      setShowModal(false);
-      setTitle("");
-      setTextContent("");
-      setFile(null);
-      fetchCourse();
-    } catch {
-      toast.error("Failed to add content");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   // ===== DELETE CONTENT =====
   const handleDelete = async (index) => {
     if (!window.confirm("Delete this content?")) return;
 
-    const prev = [...contents];
+    const backup = [...contents];
     setContents(contents.filter((_, i) => i !== index));
 
     try {
@@ -128,21 +76,82 @@ const CourseDetails = () => {
       );
       toast.success("Content deleted");
     } catch {
-      setContents(prev);
+      setContents(backup);
       toast.error("Delete failed");
     }
   };
 
-  // ===== SORT & FILTER LOGIC =====
-  const displayedContents = [...contents]
-    .filter(c => filterType === "all" || c.contentType === filterType)
-    .sort((a, b) =>
-      sortOrder === "asc"
-        ? new Date(a.createdAt) - new Date(b.createdAt)
-        : new Date(b.createdAt) - new Date(a.createdAt)
+  // ===== SORT & FILTER =====
+const displayedContents = contents
+  .filter(Boolean) // ✅ remove undefined/null
+  .filter(c => filterType === "all" || c.contentType === filterType)
+  .sort((a, b) =>
+    sortOrder === "asc"
+      ? new Date(a.createdAt) - new Date(b.createdAt)
+      : new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+
+
+  // ===== ADD CONTENT =====
+const addContent = async () => {
+  if (!title.trim()) {
+    toast.error("Title is required");
+    return;
+  }
+
+  if (contentType === "postText" && !textContent.trim()) {
+    toast.error("Text content is required");
+    return;
+  }
+
+  if (contentType !== "postText" && !file) {
+    toast.error("File is required");
+    return;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("contentType", contentType);
+
+    if (contentType === "postText") {
+      formData.append("contentData", textContent);
+    } else {
+      formData.append("file", file);
+    }
+
+    const res = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/content`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      }
     );
 
-  // ===== SAFE RENDER =====
+if (res.data.success) {
+  toast.success("Content added");
+
+  await fetchCourse(); // ✅ SAFE
+
+  setTitle("");
+  setTextContent("");
+  setFile(null);
+  setContentType("postText");
+  setShowModal(false);
+} else {
+      toast.error(res.data.message || "Failed to add content");
+    }
+  } catch (err) {
+    console.error(err);
+    toast.error("Error while adding content");
+  }
+};
+
+
   if (loading) return <p className="p-6">Loading...</p>;
   if (!course) return <p className="p-6">Course not found</p>;
 
@@ -272,17 +281,91 @@ const CourseDetails = () => {
               <video controls src={c.contentData} className="w-full rounded" />
             )}
             {c.contentType === "pdf" && (
-              <a
-                href={c.contentData}
-                target="_blank"
-                className="text-indigo-600"
-              >
-                View PDF
-              </a>
+            <button
+              onClick={() => {
+                setPdfUrl(c.contentData);
+                setPageNumber(1);
+              }}
+              className="text-indigo-600 underline"
+            >
+              Open PDF
+            </button>
             )}
           </div>
         ))}
-      </div>
+
+        {/* ===== PDF MODAL ===== */}
+      {pdfUrl && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div
+            ref={pdfRef}
+            className="bg-white rounded-xl w-full max-w-4xl p-4 relative"
+          >
+            {/* TOP BAR */}
+            <div className="flex justify-between items-center mb-3">
+              <button
+                onClick={() => setPdfUrl(null)}
+                className="text-xl font-bold"
+              >
+                ✕
+              </button>
+
+              <div className="flex gap-3">
+                <button onClick={() => setScale(s => Math.max(0.6, s - 0.2))}>➖</button>
+                <button onClick={() => setScale(s => Math.min(2.5, s + 0.2))}>➕</button>
+
+                <a
+                  href={pdfUrl}
+                  download
+                  className="text-indigo-600 underline"
+                >
+                  Download
+                </a>
+
+                <button
+                  onClick={() => pdfRef.current?.requestFullscreen()}
+                >
+                  ⛶
+                </button>
+              </div>
+            </div>
+
+            {/* PDF */}
+            <div className="flex justify-center overflow-auto max-h-[70vh]">
+              <Document
+                file={pdfUrl}
+                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+              >
+                <Page pageNumber={pageNumber} scale={scale} />
+              </Document>
+            </div>
+
+            {/* NAV */}
+            <div className="flex justify-between items-center mt-4">
+              <button
+                disabled={pageNumber <= 1}
+                onClick={() => setPageNumber(p => p - 1)}
+              >
+                ◀ Prev
+              </button>
+
+              <span>
+                Page {pageNumber} of {numPages}
+              </span>
+
+              <button
+                disabled={pageNumber >= numPages}
+                onClick={() => setPageNumber(p => p + 1)}
+              >
+                Next ▶
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+
 
       {/* ===== MODAL ===== */}
       {showModal && (
