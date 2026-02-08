@@ -63,7 +63,8 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    if (!req.files || !req.files.image) {
+    // ✅ multer puts file here
+    if (!req.file) {
       return res.status(400).json({
         success: false,
         message: "Course image is required",
@@ -71,12 +72,9 @@ export const addCourse = async (req, res) => {
     }
 
     // ☁️ Upload image to Cloudinary
-    const uploadResult = await cloudinary.uploader.upload(
-      req.files.image.tempFilePath,
-      {
-        folder: "lms_courses",
-      }
-    );
+    const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+      folder: "lms_courses",
+    });
 
     const newCourse = await Course.create({
       name,
@@ -92,14 +90,13 @@ export const addCourse = async (req, res) => {
       data: newCourse,
     });
   } catch (error) {
+    console.error("❌ addCourse error:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
-
-
 
 
 
@@ -165,5 +162,172 @@ export const deleteCourse = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+
+
+
+
+/**
+ * PUT /api/instructor/course/:id
+ * Update course details (Instructor only)
+ */
+export const updateCourseDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const instructorId = req.instructor.id;
+
+    const {
+      name,
+      description,
+      price,
+      imageCover
+    } = req.body;
+
+    const course = await Course.findOne({
+      _id: id,
+      instructor: instructorId
+    });
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found or not authorized"
+      });
+    }
+
+    // Update fields only if provided
+    if (name !== undefined) course.name = name;
+    if (description !== undefined) course.description = description;
+    if (price !== undefined) course.price = price;
+    if (imageCover !== undefined) course.imageCover = imageCover;
+
+    await course.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Course updated successfully",
+      data: course
+    });
+
+  } catch (error) {
+    console.error("Update course error:", error);
+
+    // Example error logging (extend later to DB collection)
+    // await ErrorLog.create({ message: error.message, stack: error.stack });
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error while updating course"
+    });
+  }
+};
+
+
+
+
+import { deleteFromCloudinary } from "../config/cloudinary.js";
+
+export const addCourseContent = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { title, contentType, contentData } = req.body;
+    const instructorId = req.instructor.id; // ✅ FIXED
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== instructorId) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    let finalContentData = contentData;
+    let cloudinaryPublicId = null;
+
+    // 📤 FILE CONTENT
+    if (req.file) {
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "lms_course_content",
+        resource_type: "auto", // image / video / pdf
+      });
+
+      finalContentData = uploadResult.secure_url;
+      cloudinaryPublicId = uploadResult.public_id;
+    }
+
+    // 🧩 CREATE CONTENT OBJECT
+    const newContent = {
+      title,
+      contentType,
+      contentData: finalContentData,
+      cloudinaryPublicId,
+      createdAt: new Date(),
+    };
+
+    course.content.push(newContent);
+    await course.save();
+
+    res.status(201).json({
+      success: true,
+      message: "Content added successfully",
+      content: newContent,
+    });
+  } catch (error) {
+    console.error("ADD CONTENT ERROR:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
+
+export const removeCourseContent = async (req, res) => {
+  try {
+    const { courseId, contentIndex } = req.params;
+    const instructorId = req.instructor.id; // ✅ FIXED
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== instructorId) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    const index = Number(contentIndex);
+    if (!course.content[index]) {
+      return res.status(400).json({ success: false, message: "Invalid content index" });
+    }
+
+    const deletedContent = course.content[index];
+
+    // ☁️ Cloudinary cleanup
+    if (deletedContent.cloudinaryPublicId) {
+      try {
+        await cloudinary.uploader.destroy(
+          deletedContent.cloudinaryPublicId,
+          { resource_type: "auto" }
+        );
+        console.log("☁️ Cloudinary file deleted:", deletedContent.cloudinaryPublicId);
+      } catch (err) {
+        console.warn("⚠ Cloudinary delete failed:", err.message);
+      }
+    }
+
+    course.content.splice(index, 1);
+    await course.save();
+
+    res.json({
+      success: true,
+      message: "Content deleted successfully",
+      deletedContent,
+    });
+  } catch (error) {
+    console.error("DELETE CONTENT ERROR:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };

@@ -25,7 +25,7 @@ const Login = () => {
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", role);
         toast.success(`${role.toUpperCase()} Login Successful!`);
-        role === "admin"? navigate('/AdmDashboard') : navigate('/AddCource')
+        role === "admin"? navigate('/AdmDashboard') : navigate('/AllCources')
       } else {
         toast.error(data.message || "Invalid credentials");
       }

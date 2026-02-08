@@ -87,7 +87,13 @@ const AllCources = () => {
             {courses.map((course) => (
               <div
                 key={course._id}
-                className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition"
+                onClick={() => navigate(`/AllCources/${course._id}`)}
+                className="
+                  bg-white rounded-2xl shadow-md overflow-hidden
+                  cursor-pointer
+                  hover:shadow-xl hover:-translate-y-1
+                  transition-all duration-300
+                "
               >
                 <img
                   src={course.imageCover}

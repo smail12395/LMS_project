@@ -6,21 +6,26 @@ import Login from './pages/Login';
 import AddCource from './pages/instructor/AddCource';
 import AllCources from './pages/instructor/AllCources';
 import DashInstructor from './pages/instructor/DashInstructor';
+import CourseDetails from './pages/instructor/CourseDetails';
+import Navbar from './components/Navbar';
 
 const App = () => {
   return (
-    <div className='mx-4 sm:mx-[10%]'>
-      
-      <hr />
-      <ToastContainer />
-      <Routes>
-        <Route path='/login' element={<Login />} />
-        <Route path='/AddCource' element={<AddCource />} />
-        <Route path='/AllCources' element={<AllCources />} />
-        <Route path='/' element={<DashInstructor />} />
-      </Routes>
-    </div>
-  )
-}
+    <>
+      <Navbar />
 
-export default App
+      <div className="mx-4 sm:mx-[10%]">
+        <ToastContainer />
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/AddCource" element={<AddCource />} />
+          <Route path="/AllCources" element={<AllCources />} />
+          <Route path="/" element={<DashInstructor />} />
+          <Route path="/AllCources/:courseId" element={<CourseDetails />} />
+        </Routes>
+      </div>
+    </>
+  );
+};
+
+export default App;
