@@ -8,6 +8,7 @@ import AllCources from './pages/instructor/AllCources';
 import DashInstructor from './pages/instructor/DashInstructor';
 import CourseDetails from './pages/instructor/CourseDetails';
 import Navbar from './components/Navbar';
+import VideoSeries from './pages/instructor/VideoSeries';
 
 const App = () => {
   return (
@@ -22,6 +23,7 @@ const App = () => {
           <Route path="/AllCources" element={<AllCources />} />
           <Route path="/" element={<DashInstructor />} />
           <Route path="/AllCources/:courseId" element={<CourseDetails />} />
+          <Route path="/VideoSeries/:courseId" element={<VideoSeries />} />
         </Routes>
       </div>
     </>

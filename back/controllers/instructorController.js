@@ -51,7 +51,6 @@ export const loginInstructor = async (req, res) => {
 
 
 import { v2 as cloudinary } from "cloudinary";
-
 export const addCourse = async (req, res) => {
   try {
     const { name, description, price } = req.body;
@@ -63,7 +62,6 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    // ✅ multer puts file here
     if (!req.file) {
       return res.status(400).json({
         success: false,
@@ -71,7 +69,6 @@ export const addCourse = async (req, res) => {
       });
     }
 
-    // ☁️ Upload image to Cloudinary
     const uploadResult = await cloudinary.uploader.upload(req.file.path, {
       folder: "lms_courses",
     });
@@ -83,6 +80,13 @@ export const addCourse = async (req, res) => {
       imageCover: uploadResult.secure_url,
       instructor: req.instructor.id,
     });
+
+    // ✅ ADD COURSE TO INSTRUCTOR
+    await instructorModel.findByIdAndUpdate(
+      req.instructor.id,
+      { $push: { courses: newCourse._id } },
+      { new: true }
+    );
 
     return res.status(201).json({
       success: true,
@@ -128,16 +132,14 @@ export const getInstructorCourses = async (req, res) => {
 
 
 
+
 export const deleteCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
 
-    console.log("🗑️ Delete request for course:", courseId);
-    console.log("👤 Instructor:", req.instructor.id);
-
     const course = await Course.findOne({
       _id: courseId,
-      instructor: req.instructor.id, // security check
+      instructor: req.instructor.id,
     });
 
     if (!course) {
@@ -147,9 +149,13 @@ export const deleteCourse = async (req, res) => {
       });
     }
 
-    await Course.findByIdAndDelete(courseId);
+    // ✅ REMOVE COURSE FROM INSTRUCTOR
+    await instructorModel.findByIdAndUpdate(
+      req.instructor.id,
+      { $pull: { courses: courseId } }
+    );
 
-    console.log("✅ Course deleted successfully");
+    await Course.findByIdAndDelete(courseId);
 
     return res.status(200).json({
       success: true,
@@ -157,13 +163,13 @@ export const deleteCourse = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Delete course error:", error.message);
-
     return res.status(500).json({
       success: false,
       message: error.message,
     });
   }
 };
+
 
 
 
@@ -227,11 +233,10 @@ export const updateCourseDetails = async (req, res) => {
 
 
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.js";
-
 export const addCourseContent = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { title, contentType, contentData } = req.body;
+    const { title, contentType, contentData, availability } = req.body; //  Added availability
     const instructorId = req.instructor.id;
 
     const course = await Course.findById(courseId);
@@ -267,11 +272,17 @@ export const addCourseContent = async (req, res) => {
       cloudinaryPublicId = upload.public_id;
     }
 
+    // ===== VALIDATE AVAILABILITY =====
+    const validAvailability = ["paid", "free"].includes(availability) 
+      ? availability 
+      : "paid"; // Default to "paid" if invalid
+
     const newContent = {
       title,
       contentType,
       contentData: finalContentData,
       cloudinaryPublicId,
+      availability: validAvailability, // ✅ Save availability
       createdAt: new Date(),
     };
 
@@ -280,7 +291,7 @@ export const addCourseContent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Content added successfully",
+      message: `Content added successfully (${validAvailability})`,
       content: newContent,
     });
   } catch (error) {
@@ -329,5 +340,360 @@ export const removeCourseContent = async (req, res) => {
   } catch (error) {
     console.error("DELETE CONTENT ERROR:", error);
     res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// back/controllers/instructorController.js
+import fs from "fs";
+
+export const addVideoSeries = async (req, res) => {
+  try {
+    console.log("addVideoSeries called with courseId:", req.params.courseId);
+    
+    const { courseId } = req.params;
+    const instructorId = req.instructor.id;
+
+    if (!instructorId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Find course and verify ownership
+    const course = await Course.findOne({
+      _id: courseId,
+      instructor: instructorId,
+    });
+
+    if (!course) {
+      return res.status(403).json({
+        success: false,
+        message: "Course not found or you don't have permission",
+      });
+    }
+
+    const files = req.files || [];
+    let meta = req.body.meta || [];
+
+    console.log(`Received ${files.length} files and ${Array.isArray(meta) ? meta.length : 1} metadata entries`);
+
+    // Normalize meta to array
+    if (!Array.isArray(meta)) {
+      meta = [meta];
+    }
+
+    if (files.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No video files provided",
+      });
+    }
+
+    if (files.length !== meta.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Video files (${files.length}) and metadata (${meta.length}) count mismatch`,
+      });
+    }
+
+    const series = [];
+    const errors = [];
+
+    // Get the current number of videos to calculate order
+    const currentVideoCount = course.videoSeries ? course.videoSeries.length : 0;
+
+    // Upload videos sequentially to avoid Cloudinary rate limits
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      let parsedMeta;
+
+      try {
+        parsedMeta = JSON.parse(meta[i]);
+      } catch (err) {
+        errors.push(`Video ${i + 1}: Invalid metadata format`);
+        continue;
+      }
+
+      // Validate video title
+      if (!parsedMeta.videoTitle || parsedMeta.videoTitle.trim() === "") {
+        errors.push(`Video ${i + 1}: Title is required`);
+        continue;
+      }
+
+      // Validate file size (Cloudinary free plan: 100MB max)
+      if (file.size > 100 * 1024 * 1024) {
+        errors.push(`Video ${i + 1}: File too large (max 100MB)`);
+        continue;
+      }
+
+      try {
+        console.log(`Uploading video ${i + 1}: ${parsedMeta.videoTitle}`);
+        
+        // Upload to Cloudinary
+        const uploaded = await cloudinary.uploader.upload(file.path, {
+          resource_type: "video",
+          folder: `lms_courses/${courseId}/videos`,
+          chunk_size: 6000000, // 6MB chunks for large files
+          timeout: 120000, // 2 minute timeout
+        });
+
+        console.log(`Video ${i + 1} uploaded successfully: ${uploaded.public_id}`);
+
+        // Create video object with proper order (existing count + index)
+        const videoObj = {
+          videoTitle: parsedMeta.videoTitle.trim(),
+          order: currentVideoCount + i, // This ensures order continues from existing videos
+          videoUrl: uploaded.secure_url,
+          cloudinaryPublicId: uploaded.public_id,
+          duration: uploaded.duration || 0,
+          createdAt: new Date(),
+        };
+
+        // Add quizzes if provided
+        if (parsedMeta.quizzes && Array.isArray(parsedMeta.quizzes)) {
+          videoObj.quizzes = parsedMeta.quizzes.map(quiz => ({
+            question: quiz.question || "",
+            options: Array.isArray(quiz.options) ? quiz.options : ["", "", "", ""],
+            correctAnswer: parseInt(quiz.correctAnswer) || 0,
+            points: parseInt(quiz.points) || 10,
+          }));
+        } else {
+          videoObj.quizzes = [];
+        }
+
+        series.push(videoObj);
+
+        // Clean up temp file
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+
+      } catch (uploadErr) {
+        console.error(`Error uploading video ${i + 1}:`, uploadErr);
+        errors.push(`Video ${i + 1}: Upload failed - ${uploadErr.message}`);
+        
+        // Clean up temp file even on error
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      }
+    }
+
+    // Check if we have any successful uploads
+    if (series.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No videos were uploaded successfully",
+        errors: errors,
+      });
+    }
+
+    // Update course with new video series
+    // If videoSeries doesn't exist, initialize it
+    if (!course.videoSeries || !Array.isArray(course.videoSeries)) {
+      course.videoSeries = [];
+    }
+
+    // Add new videos to existing ones
+    course.videoSeries = [...course.videoSeries, ...series];
+    
+    // Sort by order (should already be correct, but just in case)
+    course.videoSeries.sort((a, b) => a.order - b.order);
+    
+    await course.save();
+
+    console.log(`Successfully saved ${series.length} videos to course ${courseId}`);
+
+    res.json({
+      success: true,
+      uploaded: series.length,
+      videoSeries: series,
+      errors: errors.length > 0 ? errors : undefined,
+      message: `Successfully uploaded ${series.length} video${series.length > 1 ? 's' : ''}`
+    });
+
+  } catch (err) {
+    console.error("Error in addVideoSeries:", err);
+    
+    // Clean up any remaining temp files
+    if (req.files) {
+      req.files.forEach(file => {
+        if (fs.existsSync(file.path)) {
+          fs.unlinkSync(file.path);
+        }
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+
+export const getExistingVideoSeries = async (req, res) => {
+  try {
+    console.log("getExistingVideoSeries called for course:", req.params.courseId);
+    
+    const { courseId } = req.params;
+    const instructorId = req.instructor.id;
+
+    if (!instructorId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    const course = await Course.findOne({
+      _id: courseId,
+      instructor: instructorId,
+    }).select("videoSeries");
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found or access denied",
+      });
+    }
+
+    const videoSeries = course.videoSeries || [];
+    
+    // FIX: Include _id in sanitizedSeries
+    const sanitizedSeries = videoSeries.map(video => ({
+      _id: video._id, // ✅ CRITICAL: Include the _id field
+      videoTitle: video.videoTitle || "",
+      videoUrl: video.videoUrl || "",
+      cloudinaryPublicId: video.cloudinaryPublicId || "",
+      duration: video.duration || 0,
+      quizzes: video.quizzes || [],
+      order: video.order || 0,
+      createdAt: video.createdAt || new Date(),
+    }));
+
+    console.log(`Returning ${sanitizedSeries.length} videos for course ${courseId}`);
+    console.log("Sample video ID:", sanitizedSeries[0]?._id); // Debug log
+
+    res.json({
+      success: true,
+      videoSeries: sanitizedSeries,
+      count: sanitizedSeries.length,
+    });
+
+  } catch (err) {
+    console.error("Error in getExistingVideoSeries:", err);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: err.message,
+    });
+  }
+};
+
+
+export const deleteVideoFromSeries = async (req, res) => {
+  try {
+    const { courseId, videoId } = req.params;
+    const instructorId = req.instructor.id;
+
+    console.log(`Delete video request - Course: ${courseId}, Video: ${videoId}`);
+
+    if (!instructorId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+
+    // Find course and verify ownership
+    const course = await Course.findOne({
+      _id: courseId,
+      instructor: instructorId,
+    });
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found or access denied",
+      });
+    }
+
+    // Check if videoSeries exists
+    if (!course.videoSeries || !Array.isArray(course.videoSeries)) {
+      return res.status(404).json({
+        success: false,
+        message: "No video series found in this course",
+      });
+    }
+
+    // Find video index by _id
+    const videoIndex = course.videoSeries.findIndex(
+      video => video._id.toString() === videoId
+    );
+
+    if (videoIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: "Video not found in series",
+      });
+    }
+
+    const deletedVideo = course.videoSeries[videoIndex];
+
+    // ☁️ Cloudinary cleanup
+    if (deletedVideo.cloudinaryPublicId) {
+      try {
+        console.log(`Deleting from Cloudinary: ${deletedVideo.cloudinaryPublicId}`);
+        
+        // Delete from Cloudinary
+        await cloudinary.uploader.destroy(deletedVideo.cloudinaryPublicId, {
+          resource_type: 'video',
+          invalidate: true
+        });
+        
+        console.log(`Successfully deleted from Cloudinary: ${deletedVideo.cloudinaryPublicId}`);
+      } catch (cloudinaryErr) {
+        console.warn(`⚠ Cloudinary delete failed: ${cloudinaryErr.message}`);
+        // Continue with DB deletion even if Cloudinary fails
+        // Log this for manual cleanup
+        console.warn(`Manual cleanup needed for: ${deletedVideo.cloudinaryPublicId}`);
+      }
+    }
+
+    // Remove video from array
+    course.videoSeries.splice(videoIndex, 1);
+
+    // Reorder remaining videos
+    course.videoSeries.forEach((video, index) => {
+      video.order = index;
+    });
+
+    await course.save();
+
+    // Log the deletion
+    console.log(`Deleted video: "${deletedVideo.videoTitle}" from course: ${courseId}`);
+    console.log(`Remaining videos: ${course.videoSeries.length}`);
+
+    res.json({
+      success: true,
+      message: "Video deleted successfully",
+      deletedVideo: {
+        title: deletedVideo.videoTitle,
+        videoId: deletedVideo._id,
+        hadCloudinaryCleanup: !!deletedVideo.cloudinaryPublicId
+      },
+      remainingCount: course.videoSeries.length
+    });
+
+  } catch (err) {
+    console.error("Error in deleteVideoFromSeries:", err);
+    
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete video",
+      error: err.message,
+    });
   }
 };

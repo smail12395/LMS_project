@@ -16,7 +16,14 @@ const contentSchema = new mongoose.Schema({
   },
   position: {
     type: Number,
-    default: 0, // for ordering later
+    default: 0,
+  },
+  // ✅ NEW FIELD: Content Availability
+  availability: {
+    type: String,
+    enum: ["paid", "free"], // "paid" = only for paying users, "free" = everyone can see
+    default: "paid",
+    required: true,
   },
   createdAt: {
     type: Date,
@@ -40,10 +47,28 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    videoSeries: [
+      {
+        videoTitle: { type: String, required: true },
+        videoUrl: { type: String, required: true },
+        cloudinaryPublicId: { type: String, required: true },
+        duration: { type: Number },
+        quizzes: [
+          {
+            question: String,
+            options: [String],
+            correctAnswer: Number,
+            points: { type: Number, default: 10 },
+          },
+        ],
+        order: { type: Number },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
 
     price: { type: Number, required: true },
 
-    content: [contentSchema], // ✅ NEW
+    content: [contentSchema],
 
     createdAt: {
       type: Date,
