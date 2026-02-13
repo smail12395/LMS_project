@@ -513,7 +513,7 @@ const handlePlayContentVideo = async (contentItem) => {
   </div>
 </div>
 
-        {/* ========== محتوى التبويبات ========== */}
+      
 {activeTab === 'content' && (
   <div className="bg-white rounded-2xl shadow-xl p-6 lg:p-8">
     <div className="flex items-center mb-6">
@@ -1139,7 +1139,6 @@ const handlePlayContentVideo = async (contentItem) => {
 )}
       </div>
 
-      {/* Custom Scrollbar Styles */}
       <style>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 6px;
@@ -1158,6 +1157,7 @@ const handlePlayContentVideo = async (contentItem) => {
       `}</style>
     </div>
   );
-};
+}
+
 
 export default Course;
