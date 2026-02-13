@@ -1,5 +1,5 @@
 import express from "express";
-import { loginInstructor, addCourse, getInstructorCourses, deleteCourse,updateCourseDetails,addCourseContent,removeCourseContent,addVideoSeries,getExistingVideoSeries,deleteVideoFromSeries } from '../controllers/InstructorController.js';
+import { loginInstructor, addCourse, getInstructorCourses, deleteCourse,updateCourseDetails,addCourseContent,removeCourseContent,addVideoSeries,getExistingVideoSeries,deleteVideoFromSeries } from '../controllers/instructorController.js';
 import authInstructor from "../middleware/authInstructor.js";
 import multer from "multer";
 
