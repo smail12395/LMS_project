@@ -48,8 +48,8 @@ useEffect(() => {
 
   const navItems = [
     { name: 'Home', path: '/' },
-    { name: 'My Courses', path: '/my-courses' },
-    { name: 'My Profile', path: '/profile' }, // placeholder
+    { name: 'My Courses', path: '/MyCourses' },
+    { name: 'My Profile', path: '/MyProfile' }, // placeholder
   ];
 
   return (
