@@ -2,7 +2,7 @@ import express from "express";
 import { loginInstructor, addCourse, getInstructorCourses,
    deleteCourse,updateCourseDetails,addCourseContent,removeCourseContent,
    addVideoSeries,getExistingVideoSeries,deleteVideoFromSeries,
-   getCourseUsersAnswers } from '../controllers/InstructorController.js';
+   getCourseUsersAnswers } from '../controllers/instructorController.js';
 import authInstructor from "../middleware/authInstructor.js";
 import multer from "multer";
 
