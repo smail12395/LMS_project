@@ -7,7 +7,9 @@ import authInstructor from "../middleware/authInstructor.js";
 import multer from "multer";
 
 const instructorRouter = express.Router();
-const upload = multer({ dest: "uploads/" });
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
 
 instructorRouter.delete('/course/:courseId/video-series/:videoId', authInstructor, deleteVideoFromSeries);
 instructorRouter.post("/course/:courseId/video-series",authInstructor,upload.array("videos"),addVideoSeries);
