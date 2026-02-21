@@ -1,5 +1,7 @@
 import express from "express";
-import { registerUser, loginUser,getPublicCourses,getPaymentInfo,createPaymentIntent,confirmEnrollment,getCourseDetails,streamVideo,streamContentVideo,saveQuizAnswer,getUserQuizAnswers} from "../controllers/userController.js";
+import { registerUser, loginUser,getPublicCourses,getPaymentInfo,createPaymentIntent,
+    confirmEnrollment,getCourseDetails,streamVideo,streamContentVideo,
+    saveQuizAnswer,getUserQuizAnswers,getUserEnrolledCourses,getUserData} from "../controllers/userController.js";
 import authUser from "../middleware/authUser.js";
 import checkEnrollment from '../middleware/checkEnrollment.js';
 import checkEnrollmentForVideo from '../middleware/checkEnrollmentForVideo.js'; // جديد
@@ -17,5 +19,7 @@ userRoute.get( '/videos/stream/:courseId/:videoId', authUser, checkEnrollmentFor
 userRoute.get('/content/stream/:courseId/:contentId',authUser,checkEnrollment,streamContentVideo);
 userRoute.post('/quizzes/save-answer', authUser, checkEnrollment, saveQuizAnswer);
 userRoute.get('/quizzes/my-answers/:courseId', authUser, checkEnrollment, getUserQuizAnswers);
+userRoute.get('/my-courses', authUser, getUserEnrolledCourses);
+userRoute.get("/me", authUser, getUserData);
 
 export default userRoute;

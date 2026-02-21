@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { toast, ToastContainer } from "react-toastify";
+import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
   const [courses, setCourses] = useState([]);
@@ -9,6 +10,7 @@ const Home = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   //  FETCH COURSES – exactly as you requested
   useEffect(() => {
@@ -189,8 +191,9 @@ const Home = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredCourses.map((course) => (
               <div
+                onClick={() => navigate(`/course/${course._id}`)}
                 key={course._id}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col"
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300 flex flex-col cursor-pointer"
               >
                 {/* Image */}
                 <div className="relative h-48 w-full bg-gray-200">

@@ -468,7 +468,7 @@ const handlePlayContentVideo = async (contentItem) => {
           </div>
         </div>
 
-{/* ========== شريط التبويبات ========== */}
+
 <div className="mb-8">
   <div className="bg-white rounded-xl shadow-md p-1 flex max-w-md mx-auto lg:mx-0">
     <button

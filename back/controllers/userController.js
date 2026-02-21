@@ -58,7 +58,7 @@ export const registerUser = async (req, res) => {
       expiresIn: "7d",
     });
 
-    return res.status(201).json({ success: true, token });
+    return res.status(201).json({ success: true, token, name: user.name  });
   } catch (error) {
     console.error("Register error:", error);
     return res
@@ -99,7 +99,7 @@ export const loginUser = async (req, res) => {
       expiresIn: "7d",
     });
 
-    return res.json({ success: true, token });
+    return res.json({ success: true, token, name: user.name });
   } catch (error) {
     console.error("Login error:", error);
     return res
@@ -619,7 +619,7 @@ export const streamContentVideo = async (req, res) => {
     res.status(range ? 206 : 200);
     response.data.pipe(res);
 
-    response.data.on('end', () => console.log(`✅ Content video stream finished: ${contentItem.title}`));
+    response.data.on('end', () => console.log(`Content video stream finished: ${contentItem.title}`));
     response.data.on('error', (err) => {
       console.error('Stream pipe error:', err.message);
       if (!res.headersSent) res.status(500).end();
@@ -744,5 +744,68 @@ export const getUserQuizAnswers = async (req, res) => {
   } catch (error) {
     console.error('getUserQuizAnswers error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+export const getUserEnrolledCourses = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Find active enrollments (status active and not expired)
+    const enrollments = await Enrollment.find({
+      userId,
+      status: 'active',
+      expiresAt: { $gt: new Date() }
+    })
+      .populate({
+        path: 'courseId',
+        select: 'name imageCover description price instructor',
+        populate: { path: 'instructor', select: 'name' }
+      })
+      .lean();
+
+    // Format response
+    const courses = enrollments.map(enrollment => ({
+      enrollmentId: enrollment._id,
+      enrolledAt: enrollment.enrolledAt,
+      expiresAt: enrollment.expiresAt,
+      course: {
+        _id: enrollment.courseId._id,
+        name: enrollment.courseId.name,
+        imageCover: enrollment.courseId.imageCover,
+        description: enrollment.courseId.description,
+        price: enrollment.courseId.price,
+        instructorName: enrollment.courseId.instructor?.name || 'Unknown',
+      }
+    }));
+
+    res.status(200).json({
+      success: true,
+      count: courses.length,
+      data: courses
+    });
+  } catch (error) {
+    console.error('Error fetching user enrolled courses:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+export const getUserData = async (req, res) => {
+  try {
+    // The user ID is attached to the request object by the authUser middleware
+    const user = await userModel.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error in getUserData:", error.message);
+    res.status(500).json({ success: false, message: "Internal Server Error" });
   }
 };

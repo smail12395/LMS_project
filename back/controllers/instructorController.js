@@ -43,13 +43,6 @@ export const loginInstructor = async (req, res) => {
   }
 };
 
-
-
-
-
-
-
-
 import { v2 as cloudinary } from "cloudinary";
 export const addCourse = async (req, res) => {
   try {
@@ -101,9 +94,6 @@ export const addCourse = async (req, res) => {
     });
   }
 };
-
-
-
 export const getInstructorCourses = async (req, res) => {
   try {
     console.log("➡️ Instructor ID:", req.instructor.id);
@@ -127,11 +117,6 @@ export const getInstructorCourses = async (req, res) => {
     });
   }
 };
-
-
-
-
-
 
 export const deleteCourse = async (req, res) => {
   try {
@@ -170,15 +155,6 @@ export const deleteCourse = async (req, res) => {
   }
 };
 
-
-
-
-
-
-/**
- * PUT /api/instructor/course/:id
- * Update course details (Instructor only)
- */
 export const updateCourseDetails = async (req, res) => {
   try {
     const { id } = req.params;
@@ -229,8 +205,6 @@ export const updateCourseDetails = async (req, res) => {
     });
   }
 };
-
-
 
 import { uploadToCloudinary, deleteFromCloudinary } from "../config/cloudinary.js";
 export const addCourseContent = async (req, res) => {
@@ -695,5 +669,61 @@ export const deleteVideoFromSeries = async (req, res) => {
       message: "Failed to delete video",
       error: err.message,
     });
+  }
+};
+
+import QuizAnswer from '../Models/QuizAnswer.js';
+// GET /api/instructor/courses/:courseId/users-answers
+export const getCourseUsersAnswers = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const instructorId = req.instructor.id;
+
+    // Verify course belongs to this instructor
+    const course = await Course.findOne({ _id: courseId, instructor: instructorId });
+    if (!course) {
+      return res.status(404).json({ success: false, message: 'Course not found or not authorized' });
+    }
+
+    // Find all quiz answers for this course, populate user name
+    const answers = await QuizAnswer.find({ course: courseId })
+      .populate('user', 'name')
+      .lean();
+
+    // Group by user
+    const userMap = new Map();
+    answers.forEach(ans => {
+      const userId = ans.user._id.toString();
+      if (!userMap.has(userId)) {
+        userMap.set(userId, {
+          user: {
+            _id: ans.user._id,
+            name: ans.user.name,
+          },
+          answers: [],
+          totalPoints: 0,
+          count: 0,
+        });
+      }
+      const userData = userMap.get(userId);
+      userData.answers.push(ans);
+      userData.totalPoints += ans.totalPointsEarned || 0;
+      userData.count += 1;
+    });
+
+    // Compute average per user
+    const result = Array.from(userMap.values()).map(userData => ({
+      user: userData.user,
+      averageScore: userData.count > 0 ? userData.totalPoints / userData.count : 0,
+      answers: userData.answers,
+    }));
+
+    // Sort by average descending for leaderboard
+    result.sort((a, b) => b.averageScore - a.averageScore);
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error('Error in getCourseUsersAnswers:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

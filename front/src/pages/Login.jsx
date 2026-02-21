@@ -38,7 +38,9 @@ const Login = () => {
 
         if (data.success) {
           localStorage.setItem("token", data.token);
-          toast.success("✅ Registered successfully!");
+          toast.success("Registered successfully!");
+          localStorage.setItem('userName', data.name);
+          window.dispatchEvent(new Event('authChange'));
           navigate("/");
         } else {
           toast.error(data.message || "❌ Registration failed");
@@ -51,8 +53,9 @@ const Login = () => {
 
         if (data.success) {
           localStorage.setItem("token", data.token);
-          toast.success("✅ Logged in successfully!");
-          navigate("/summarize");
+          localStorage.setItem('userName', data.name);
+          window.dispatchEvent(new Event('authChange'));
+          navigate("/");
         } else {
           toast.error(data.message || "❌ Login failed");
         }
