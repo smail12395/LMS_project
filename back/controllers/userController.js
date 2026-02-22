@@ -402,7 +402,7 @@ const enrichedContent = await Promise.all(
 import axios from 'axios';
 
 export const streamVideo = async (req, res) => {
-  const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://yourdomain.com'];
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://lms-project-frontend-sable.vercel.app'];
   const referer = req.headers.referer || req.headers.origin;
 
   if (!referer || !allowedOrigins.some(origin => referer.startsWith(origin))) {
@@ -544,7 +544,7 @@ const transformation = [
 // controllers/userController.js
 export const streamContentVideo = async (req, res) => {
   // التحقق من Referer (نفس المنطق)
-  const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000'];
+  const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'https://lms-project-frontend-sable.vercel.app'];
   const referer = req.headers.referer || req.headers.origin;
   if (!referer || !allowedOrigins.some(origin => referer.startsWith(origin))) {
     console.warn(`🚫 Blocked content video request from unknown origin: ${referer}`);
