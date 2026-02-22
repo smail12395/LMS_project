@@ -338,26 +338,29 @@ export const getCourseDetails = async (req, res) => {
     }
 
     // ---------- Enriched content (signed PDFs, plain text) ----------
-    const enrichedContent = await Promise.all(
-      publicData.content.map(async (item) => {
-        const originalItem = course.content.find(c => c._id.toString() === item._id.toString());
-        if (item.contentType === 'pdf' && originalItem?.contentData?.includes('cloudinary')) {
-          const publicId = extractCloudinaryPublicId(originalItem.contentData);
-          if (publicId) {
-            const signedPdfUrl = cloudinary.url(publicId, {
-              resource_type: 'raw',
-              sign_url: true,
-              expires_at: Math.floor(Date.now() / 1000) + 3600,
-              secure: true,
-            });
-            return { ...item, contentData: signedPdfUrl };
-          }
-        } else if (item.contentType === 'postText') {
-          return { ...item, contentData: originalItem?.contentData || '' };
-        }
-        return item;
-      })
-    );
+const enrichedContent = await Promise.all(
+  publicData.content.map(async (item) => {
+    const originalItem = course.content.find(c => c._id.toString() === item._id.toString());
+    if (item.contentType === 'pdf' && originalItem?.contentData?.includes('cloudinary')) {
+      const publicId = extractCloudinaryPublicId(originalItem.contentData);
+      if (publicId) {
+        const signedPdfUrl = cloudinary.url(publicId, {
+          resource_type: 'raw',
+          sign_url: true,
+          expires_at: Math.floor(Date.now() / 1000) + 3600,
+          secure: true,
+        });
+        return { ...item, contentData: signedPdfUrl };
+      }
+    } else if (item.contentType === 'postText') {
+      return { ...item, contentData: originalItem?.contentData || '' };
+    } else if (item.contentType === 'image' && originalItem?.contentData) {
+      // Include the original image URL
+      return { ...item, contentData: originalItem.contentData };
+    }
+    return item; // For videos or other types, contentData is omitted
+  })
+);
 
     enrichedContent.sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt) : 0;
@@ -421,15 +424,14 @@ const transformation = [
   {
     overlay: {
       font_family: 'Arial',
-      font_size: 36,                // حجم كبير
+      font_size: 54,               
       font_weight: 'bold',
       text: watermarkText,
-      background: 'rgba:00000080', // خلفية سوداء شفافة 50% (اختياري)
+      background: 'rgba:00000080', 
     },
-    color: 'white',
-    opacity: 70,                   // شفافية 70% (أقل شفافية = أوضح)
-    gravity: 'center',            // في المنتصف تماماً
-    // لا نضيف start_offset ولا duration → تستمر طوال الفيديو
+    color: 'gray',
+    opacity: 70,                 
+    gravity: 'center',          
   },
 ];
 

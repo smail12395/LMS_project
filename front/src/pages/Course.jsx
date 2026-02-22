@@ -21,6 +21,9 @@ const Course = () => {
 const [selectedContentVideo, setSelectedContentVideo] = useState(null);
 const [contentVideoStreamUrl, setContentVideoStreamUrl] = useState(null);
 const [contentVideoError, setContentVideoError] = useState(false);
+const [imageModalOpen, setImageModalOpen] = useState(false);
+const [selectedImageUrl, setSelectedImageUrl] = useState(null);
+const [isSubmitting, setIsSubmitting] = useState(false);
 
 // Quiz state
 // Quiz answers from backend
@@ -157,13 +160,18 @@ const moveToNextQuiz = () => {
 
 // Submit the selected answer to the backend
 const submitAnswer = async () => {
+  if (isSubmitting) return;
+  setIsSubmitting(true);
   stopTimer();
+
   if (selectedOption === null) {
     toast.warning('Please select an answer');
+    setIsSubmitting(false);
     return;
   }
   if (!quizSession || !quizSession.quizzes[quizSession.currentIndex]) {
     toast.error('Quiz session expired. Please restart.');
+    setIsSubmitting(false);
     return;
   }
 
@@ -186,27 +194,15 @@ const submitAnswer = async () => {
 
     if (response.data.success) {
       setUserAnswers(prev => ({ ...prev, [currentQuiz._id]: response.data.data }));
-
-      const isCorrect = (selectedOption === currentQuiz.correctAnswer);
-
-      if (quizSession.shot === 'first') {
-        if (isCorrect) {
-          moveToNextQuiz();
-        } else {
-          setQuizSession(prev => ({
-            ...prev,
-            remainingWrong: [...prev.remainingWrong, currentQuiz._id]
-          }));
-          moveToNextQuiz();
-        }
-      } else {
-        moveToNextQuiz();
-      }
+      // Now show feedback and next button
+      setAnswerSubmitted(true);
     }
   } catch (error) {
     console.error('Error saving answer:', error);
     const msg = error.response?.data?.message || 'Failed to save answer';
     toast.error(msg);
+  } finally {
+    setIsSubmitting(false);
   }
 };
 
@@ -525,53 +521,79 @@ const handlePlayContentVideo = async (contentItem) => {
       </h2>
     </div>
 
-    {/* مشغل فيديو المحتوى - للمشتركين فقط */}
-{isEnrolled && selectedContentVideo && contentVideoStreamUrl && (
-  <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-    <div className="bg-black aspect-w-16 aspect-h-9">
-      {contentVideoError ? (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6">
-          <svg className="w-12 h-12 text-red-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-          </svg>
-          <p className="text-sm">Video unavailable. <button onClick={() => handlePlayContentVideo(selectedContentVideo)} className="text-blue-400 underline">Retry</button></p>
+    {/* Video player for enrolled users */}
+    {isEnrolled && selectedContentVideo && contentVideoStreamUrl && (
+      <div className="mb-8 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+        <div className="bg-black aspect-w-16 aspect-h-9">
+          {contentVideoError ? (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-gray-900 text-white p-6">
+              <svg className="w-12 h-12 text-red-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <p className="text-sm">Video unavailable. <button onClick={() => handlePlayContentVideo(selectedContentVideo)} className="text-blue-400 underline">Retry</button></p>
+            </div>
+          ) : (
+            <video
+              key={contentVideoStreamUrl}
+              controls
+              controlsList="nodownload"
+              disablePictureInPicture
+              onContextMenu={(e) => e.preventDefault()}
+              onError={() => setContentVideoError(true)}
+              className="w-full h-full"
+            >
+              <source src={contentVideoStreamUrl} type="video/mp4" />
+            </video>
+          )}
         </div>
-      ) : (
-        <video
-          key={contentVideoStreamUrl}
-          controls
-          controlsList="nodownload"
-          disablePictureInPicture
-          onContextMenu={(e) => e.preventDefault()}
-          onError={() => setContentVideoError(true)}
-          className="w-full h-full"
-        >
-          <source src={contentVideoStreamUrl} type="video/mp4" />
-        </video>
-      )}
-    </div>
-    <div className="p-3 bg-gray-50 flex justify-between items-center">
-      <span className="text-sm font-medium text-gray-700 truncate">{selectedContentVideo.title}</span>
-      <button
-        onClick={() => {
-          setSelectedContentVideo(null);
-          setContentVideoStreamUrl(null);
-        }}
-        className="text-xs text-gray-500 hover:text-gray-700"
+        <div className="p-3 bg-gray-50 flex justify-between items-center">
+          <span className="text-sm font-medium text-gray-700 truncate">{selectedContentVideo.title}</span>
+          <button
+            onClick={() => {
+              setSelectedContentVideo(null);
+              setContentVideoStreamUrl(null);
+            }}
+            className="text-xs text-gray-500 hover:text-gray-700"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Image Modal */}
+    {imageModalOpen && selectedImageUrl && (
+      <div 
+        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-75 backdrop-blur-sm"
+        onClick={() => setImageModalOpen(false)}
       >
-        Close
-      </button>
-    </div>
-  </div>
-)}
+        <div 
+          className="relative max-w-5xl max-h-full rounded-2xl overflow-hidden shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <img 
+            src={selectedImageUrl} 
+            alt="Course content" 
+            className="w-full h-full object-contain"
+          />
+          <button
+            onClick={() => setImageModalOpen(false)}
+            className="absolute top-4 right-4 p-2 bg-white rounded-full shadow-lg hover:bg-gray-100 transition"
+          >
+            <svg className="w-6 h-6 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    )}
 
+    {/* Content list */}
     {(() => {
-      // 1. تحديد المحتوى الذي سيتم عرضه حسب صلاحية المستخدم
       const contentToShow = isEnrolled
-        ? sortedContent // المشترك: كل المحتوى
-        : sortedContent.filter(item => item.availability === 'free'); // غير المشترك: فقط المجاني
+        ? sortedContent
+        : sortedContent.filter(item => item.availability === 'free');
 
-      // 2. إذا كانت القائمة فارغة → رسالة مناسبة
       if (contentToShow.length === 0) {
         const emptyMessage = !isEnrolled
           ? 'No public content available.'
@@ -586,13 +608,70 @@ const handlePlayContentVideo = async (contentItem) => {
         );
       }
 
-      // 3. عرض العناصر
       return (
         <div className="space-y-3">
           {contentToShow.map((item) => {
             const isNew =
               item.createdAt &&
               new Date(item.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+            // Choose icon based on content type
+            let icon;
+            let bgColor;
+            let iconColor;
+            switch (item.contentType) {
+              case 'pdf':
+                icon = (
+                  <path
+                    fillRule="evenodd"
+                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                    clipRule="evenodd"
+                  />
+                );
+                bgColor = 'bg-red-100';
+                iconColor = 'text-red-600';
+                break;
+              case 'video':
+                icon = (
+                  <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                );
+                bgColor = 'bg-purple-100';
+                iconColor = 'text-purple-600';
+                break;
+              case 'postText':
+                icon = (
+                  <path
+                    fillRule="evenodd"
+                    d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0h8v2H6V4zm0 4h8v2H6V8zm0 4h8v2H6v-2z"
+                    clipRule="evenodd"
+                  />
+                );
+                bgColor = 'bg-blue-100';
+                iconColor = 'text-blue-600';
+                break;
+              case 'image':
+                icon = (
+                  <path
+                    fillRule="evenodd"
+                    d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z"
+                    clipRule="evenodd"
+                  />
+                );
+                bgColor = 'bg-green-100';
+                iconColor = 'text-green-600';
+                break;
+              default:
+                icon = (
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                    clipRule="evenodd"
+                  />
+                );
+                bgColor = 'bg-gray-100';
+                iconColor = 'text-gray-600';
+            }
+
             return (
               <div
                 key={item._id}
@@ -602,32 +681,14 @@ const handlePlayContentVideo = async (contentItem) => {
                     : 'border-gray-200 opacity-80'
                 }`}
               >
-                {/* أيقونة حسب النوع */}
-                <div className="flex-shrink-0 mr-4">
-                  {item.contentType === 'pdf' ? (
-                    <div className="bg-red-100 p-2 rounded-lg group-hover:bg-red-200 transition">
-                      <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-100 p-2 rounded-lg group-hover:bg-blue-200 transition">
-                      <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                  )}
+                {/* Icon */}
+                <div className={`flex-shrink-0 mr-4 ${bgColor} p-2 rounded-lg group-hover:bg-opacity-80 transition`}>
+                  <svg className={`w-6 h-6 ${iconColor}`} fill="currentColor" viewBox="0 0 20 20">
+                    {icon}
+                  </svg>
                 </div>
 
-                {/* العنوان والوصف */}
+                {/* Title and metadata */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-base font-medium text-gray-900 truncate">{item.title}</p>
@@ -638,46 +699,72 @@ const handlePlayContentVideo = async (contentItem) => {
                     )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    {item.contentType === 'pdf' ? 'PDF Document' : 'Text'}
+                    {item.contentType === 'pdf' && 'PDF Document'}
+                    {item.contentType === 'video' && 'Video'}
+                    {item.contentType === 'postText' && 'Text'}
+                    {item.contentType === 'image' && 'Image'}
                     {item.createdAt && <span className="ml-2">• {formatDate(item.createdAt)}</span>}
                   </p>
                 </div>
 
-                {/* روابط المحتوى – للمشتركين فقط */}
-                {isEnrolled && item.contentType === 'pdf' && item.contentData && (
-                  <a
-                    href={item.contentData}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="ml-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 hover:shadow transition flex items-center"
+                {/* Action buttons for enrolled users */}
+                {isEnrolled && (
+                  <>
+                    {item.contentType === 'pdf' && item.contentData && (
+                      <a
+                        href={item.contentData}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-100 hover:shadow transition flex items-center"
+                      >
+                        <span>View</span>
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    )}
+                    {item.contentType === 'video' && (
+                      <button
+                        onClick={() => handlePlayContentVideo(item)}
+                        className="ml-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 hover:shadow transition flex items-center"
+                      >
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
+                        </svg>
+                        Play
+                      </button>
+                    )}
+                    {item.contentType === 'postText' && item.contentData && (
+                      <div className="ml-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm max-w-xs truncate">
+                        {item.contentData}
+                      </div>
+                    )}
+            {item.contentType === "image" && (
+              (() => {
+                // Try common field names for the image URL
+                const imageUrl = item.contentData;
+                console.log(item)
+                if (!imageUrl) {
+                  // Optionally show a disabled state if no URL
+                  return <div className="ml-2 px-4 py-2 bg-gray-200 text-gray-500 rounded-lg text-sm">No image</div>;
+                }
+                return (
+                  <button
+                    onClick={() => {
+                      setSelectedImageUrl(imageUrl);
+                      setImageModalOpen(true);
+                    }}
+                    className="ml-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium hover:bg-green-100 hover:shadow transition flex items-center"
                   >
-                    <span>View</span>
-                    <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
+                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                     </svg>
-                  </a>
-                )}
-                
-                {isEnrolled && item.contentType === 'video' && (
-                    <button
-                      onClick={() => handlePlayContentVideo(item)}
-                      className="ml-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-100 hover:shadow transition flex items-center"
-                    >
-                      <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                      </svg>
-                      Play
-                    </button>
-                )}
-                {isEnrolled && item.contentType === 'postText' && item.contentData && (
-                  <div className="ml-2 px-4 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm max-w-xs truncate">
-                    {item.contentData}
-                  </div>
+                    View Image
+                  </button>
+                );
+              })()
+            )}
+                  </>
                 )}
               </div>
             );
@@ -1044,17 +1131,14 @@ const handlePlayContentVideo = async (contentItem) => {
 
                   {/* Submit / Action button */}
                   {!answerSubmitted ? (
-                    <button
-                      onClick={() => {
-                        setAnswerSubmitted(true);
-                        submitAnswer();
-                      }}
-                      disabled={selectedOption === null}
-                      className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition
-                        ${selectedOption === null ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                    >
-                      Submit Answer
-                    </button>
+<button
+  onClick={submitAnswer}
+  disabled={selectedOption === null || isSubmitting}
+  className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition
+    ${selectedOption === null || isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+>
+  {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+</button>
                   ) : (
                     <div className="space-y-4">
                       {/* Feedback message (same as before) */}

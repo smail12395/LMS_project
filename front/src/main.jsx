@@ -42,7 +42,7 @@ function Banners() {
       >
         <Instagram size={15} className="text-gray-700" />
         <span className="font-medium">Created by</span>
-        <span className="font-semibold text-primary">Ismail</span>
+        <span className="font-semibold text-primary">ISMAIL</span>
       </a>
     </>
   );
