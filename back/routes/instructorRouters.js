@@ -8,9 +8,7 @@ import multer from "multer";
 
 const instructorRouter = express.Router();
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: "uploads/",
-  })
+  storage: multer.memoryStorage(),
 });
 instructorRouter.delete('/course/:courseId/video-series/:videoId', authInstructor, deleteVideoFromSeries);
 instructorRouter.post("/course/:courseId/video-series",authInstructor,upload.array("videos"),addVideoSeries);
