@@ -18,7 +18,7 @@ const contentSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  // ✅ NEW FIELD: Content Availability
+  //  NEW FIELD: Content Availability
   availability: {
     type: String,
     enum: ["paid", "free"], // "paid" = only for paying users, "free" = everyone can see
@@ -67,6 +67,7 @@ const courseSchema = new mongoose.Schema(
     ],
 
     price: { type: Number, required: true },
+    coupons: [{ type: String }],
 
     content: [contentSchema],
 

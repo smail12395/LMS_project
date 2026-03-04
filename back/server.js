@@ -41,4 +41,7 @@ app.get("/", (req, res) => {
   res.send("Working");
 });
 
-export default app;
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
+

@@ -66,7 +66,6 @@ export const registerUser = async (req, res) => {
       .json({ success: false, message: "Server error. Please try again." });
   }
 };
-
 // =======================
 // LOGIN USER
 // =======================
@@ -107,7 +106,6 @@ export const loginUser = async (req, res) => {
       .json({ success: false, message: "Server error. Please try again." });
   }
 };
-
 export const getPublicCourses = async (req, res) => {
   try {
     // Fetch only necessary fields, populate instructor name and speciality
@@ -143,8 +141,6 @@ export const getPublicCourses = async (req, res) => {
     });
   }
 };
-
-
 export const getPaymentInfo = async (req, res) => {
   try {
     const courseId = req.params.courseId;
@@ -176,7 +172,6 @@ export const getPaymentInfo = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 // @desc    Create a Stripe PaymentIntent (uses instructor's secret key)
 // @route   POST /api/payments/create-payment-intent
 // @access  Private (authUser)
@@ -222,7 +217,6 @@ export const createPaymentIntent = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 // @desc    Confirm enrollment after successful payment
 // @route   POST /api/payments/confirm-enrollment
 // @access  Private (authUser)
@@ -276,9 +270,7 @@ export const confirmEnrollment = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
 import { cloudinary } from '../config/cloudinary.js'; 
-
 const extractCloudinaryPublicId = (url) => {
   try {
     const matches = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
@@ -361,7 +353,6 @@ const enrichedContent = await Promise.all(
     return item; // For videos or other types, contentData is omitted
   })
 );
-
     enrichedContent.sort((a, b) => {
       const dateA = a.createdAt ? new Date(a.createdAt) : 0;
       const dateB = b.createdAt ? new Date(b.createdAt) : 0;
@@ -398,7 +389,6 @@ const enrichedContent = await Promise.all(
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 import axios from 'axios';
 
 export const streamVideo = async (req, res) => {
@@ -419,7 +409,7 @@ export const streamVideo = async (req, res) => {
 
     const watermarkText = encodeURIComponent(userEmail);
 
-// ✅ العلامة المائية الثابتة (تعمل على جميع الخطط)
+// WaterMark
 const transformation = [
   {
     overlay: {
@@ -435,28 +425,28 @@ const transformation = [
   },
 ];
 
-    // ✅ 1. التحقق من وجود cloudinaryPublicId
+    // making sure is cloudinaryPulic Id exist
     if (!video.cloudinaryPublicId) {
-      console.error(`❌ Video ${video._id} has no cloudinaryPublicId`);
+      console.error(`Video ${video._id} has no cloudinaryPublicId`);
       return res.status(400).json({ 
         success: false, 
         message: 'Video configuration missing' 
       });
     }
 
-    console.log(`🎬 Streaming: ${video.videoTitle} | ID: ${video._id}`);
-    console.log(`📦 Cloudinary Public ID: ${video.cloudinaryPublicId}`);
+    console.log(`Streaming: ${video.videoTitle} | ID: ${video._id}`);
+    console.log(`Cloudinary Public ID: ${video.cloudinaryPublicId}`);
 
-    // ✅ 2. توليد الرابط الموقع – مع التأكد من وجود الدالة
+    // generate URL sign
     if (typeof cloudinary.url !== 'function') {
-      console.error('❌ cloudinary.url is not a function – check cloudinary import');
+      console.error('cloudinary.url is not a function – check cloudinary import');
       return res.status(500).json({ success: false, message: 'Cloudinary configuration error' });
     }
 
     const signedUrl = cloudinary.url(video.cloudinaryPublicId, {
       resource_type: 'video',
       sign_url: true,
-      expires_at: Math.floor(Date.now() / 1000) + 300, // 5 دقائق
+      expires_at: Math.floor(Date.now() / 1000) + 300, // 5 minutes
       secure: true,
       format: 'mp4',
       transformation,
@@ -464,14 +454,13 @@ const transformation = [
 
     console.log(`🔗 Signed URL generated (expires 5 min)`);
 
-    // ✅ 3. تجهيز headers للطلب إلى Cloudinary
     const headers = {};
     if (range) {
       headers.Range = range;
       console.log(`📡 Range requested: ${range}`);
     }
 
-    // ✅ 4. طلب الفيديو من Cloudinary
+    // demande video from cloudinary
     const response = await axios({
       method: 'get',
       url: signedUrl,
@@ -488,9 +477,8 @@ const transformation = [
       throw err;
     });
 
-    console.log(`✅ Cloudinary response status: ${response.status}`);
+    console.log(`Cloudinary response status: ${response.status}`);
 
-    // ✅ 5. تمرير headers الاستجابة
     if (response.headers['content-range']) {
       res.setHeader('Content-Range', response.headers['content-range']);
     }
@@ -501,39 +489,35 @@ const transformation = [
       res.setHeader('Content-Type', response.headers['content-type']);
     }
 
-    // هيدرات منع التخزين
     res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Accept-Ranges', 'bytes');
 
-    // كود الحالة المناسب
     res.status(range ? 206 : 200);
-
-    // ✅ 6. تمرير الـ stream
     response.data.pipe(res);
 
     response.data.on('end', () => {
-      console.log(`✅ Stream finished: ${video.videoTitle}`);
+      console.log(`Stream finished: ${video.videoTitle}`);
     });
 
     response.data.on('error', (streamError) => {
-      console.error(`❌ Stream pipe error: ${video.videoTitle}`, streamError.message);
+      console.error(`Stream pipe error: ${video.videoTitle}`, streamError.message);
       if (!res.headersSent) {
         res.status(500).end();
       }
     });
 
   } catch (error) {
-    console.error('❌ streamVideo error:', {
+    console.error('streamVideo error:', {
       message: error.message,
       stack: error.stack,
       response: error.response?.data,
     });
 
     if (!res.headersSent) {
-      // ✅ نرسل JSON فقط إذا كان الطلب يتوقع JSON (مثل fetch من الفيديو)
+      // نرسل JSON فقط إذا كان الطلب يتوقع JSON (مثل fetch من الفيديو)
       // لكن للـ video element، يجب أن نرسل خطأ 500 مع stream فارغ أو نص خطأ
       res.status(500).setHeader('Content-Type', 'text/plain').send('Video stream error');
     }
@@ -731,7 +715,6 @@ export const saveQuizAnswer = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error: ' + error.message });
   }
 };
-
 export const getUserQuizAnswers = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -748,7 +731,6 @@ export const getUserQuizAnswers = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 export const getUserEnrolledCourses = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -791,8 +773,6 @@ export const getUserEnrolledCourses = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-
 export const getUserData = async (req, res) => {
   try {
     // The user ID is attached to the request object by the authUser middleware
@@ -809,5 +789,53 @@ export const getUserData = async (req, res) => {
   } catch (error) {
     console.error("Error in getUserData:", error.message);
     res.status(500).json({ success: false, message: "Internal Server Error" });
+  }
+};
+// Controller for coupon-based enrollment (free)
+export const couponEnrollment = async (req, res) => {
+  try {
+    const { courseId, couponCode } = req.body;
+    const userId = req.user.id;
+
+    // 1. Check if user is already enrolled (to avoid duplicate)
+    const existingEnrollment = await Enrollment.findOne({ userId, courseId });
+    if (existingEnrollment) {
+      return res.status(400).json({ success: false, message: 'You are already enrolled in this course' });
+    }
+
+    // 2. Atomically remove the coupon from the course's coupons array
+    const updateResult = await Course.updateOne(
+      { _id: courseId, coupons: couponCode },
+      { $pull: { coupons: couponCode } }
+    );
+
+    // If no document was modified, the coupon was invalid or already used
+    if (updateResult.modifiedCount === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid or already used coupon code' });
+    }
+
+    // 3. Create enrollment (free)
+    const enrollment = await Enrollment.create({
+      userId,
+      courseId,
+      enrolledAt: new Date(),
+      expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+      status: 'active',
+      paymentId: `coupon:${couponCode}`,
+      amountPaid: 0,
+      currency: null,
+    });
+    await Course.findByIdAndUpdate(courseId, {
+      $inc: { numberOfUsersPaidForThisCourse: 1 }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Enrollment successful via coupon',
+      data: enrollment,
+    });
+  } catch (error) {
+    console.error('couponEnrollment error:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };

@@ -1,7 +1,7 @@
 import express from "express";
 import { registerUser, loginUser,getPublicCourses,getPaymentInfo,createPaymentIntent,
     confirmEnrollment,getCourseDetails,streamVideo,streamContentVideo,
-    saveQuizAnswer,getUserQuizAnswers,getUserEnrolledCourses,getUserData} from "../controllers/userController.js";
+    saveQuizAnswer,getUserQuizAnswers,getUserEnrolledCourses,getUserData,couponEnrollment} from "../controllers/userController.js";
 import authUser from "../middleware/authUser.js";
 import checkEnrollment from '../middleware/checkEnrollment.js';
 import checkEnrollmentForVideo from '../middleware/checkEnrollmentForVideo.js'; // جديد
@@ -21,5 +21,6 @@ userRoute.post('/quizzes/save-answer', authUser, checkEnrollment, saveQuizAnswer
 userRoute.get('/quizzes/my-answers/:courseId', authUser, checkEnrollment, getUserQuizAnswers);
 userRoute.get('/my-courses', authUser, getUserEnrolledCourses);
 userRoute.get("/me", authUser, getUserData);
+userRoute.post('/payments/coupon-enrollment', authUser, couponEnrollment);
 
 export default userRoute;

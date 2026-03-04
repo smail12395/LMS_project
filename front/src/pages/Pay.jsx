@@ -128,6 +128,9 @@ const Pay = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [stripeButtonLoading, setStripeButtonLoading] = useState(false);
 
+    // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
   // Fetch payment info and create PaymentIntent
   useEffect(() => {
     const initializePayment = async () => {
@@ -192,6 +195,37 @@ const Pay = () => {
       setStripeButtonLoading(false);
       setIsModalOpen(true);
     }, 800);
+  };
+  // Handle coupon application
+  const handleCouponSubmit = async (e) => {
+    e.preventDefault();
+    if (!couponCode.trim()) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+
+    setCouponLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/payments/coupon-enrollment`,
+        { courseId, couponCode: couponCode.trim() },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.success) {
+        toast.success('Coupon applied! Enrolling you now...');
+        // Redirect to course page after short delay
+        setTimeout(() => navigate(`/course/${courseId}`), 250);
+      } else {
+        toast.error(data.message || 'Failed to apply coupon');
+      }
+    } catch (err) {
+      console.error('Coupon error:', err);
+      toast.error(err.response?.data?.message || 'Coupon application failed');
+    } finally {
+      setCouponLoading(false);
+    }
   };
 
   if (loading) {
@@ -268,12 +302,50 @@ const Pay = () => {
           </div>
 
           {/* Coupon Placeholder (future feature) */}
-          <div className="bg-white rounded-xl shadow-md p-6 border-2 border-dashed border-gray-200 flex flex-col items-center justify-center opacity-60">
-            <svg className="w-12 h-12 text-gray-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l5 5a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-5-5A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-            </svg>
-            <p className="text-gray-500 font-medium">Coupon / Discount</p>
-            <p className="text-xs text-gray-400 mt-1">Coming soon</p>
+          <div className="bg-white rounded-xl shadow-md p-6 border-2 border-dashed border-gray-200 hover:border-green-200 transition">
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l5 5a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-5-5A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-semibold text-gray-900">Coupon code</h3>
+                <p className="text-sm text-gray-500">Enter a valid coupon code</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCouponSubmit} className="space-y-3">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                placeholder="e.g. SUMMER2025"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                disabled={couponLoading}
+              />
+              <button
+                type="submit"
+                disabled={couponLoading}
+                className="w-full bg-green-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center justify-center"
+              >
+                {couponLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Applying...
+                  </>
+                ) : (
+                  'Apply Coupon'
+                )}
+              </button>
+            </form>
+
+            <p className="mt-3 text-xs text-gray-500 text-center">
+              If valid, you'll be enrolled immediately for free.
+            </p>
           </div>
         </div>
 
