@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#065f46"/>
+      <stop offset="100%" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#g1)"/>
+  <circle cx="560" cy="60" r="140" fill="#ffffff" opacity="0.08"/>
+  <circle cx="80" cy="320" r="180" fill="#ffffff" opacity="0.06"/>
+  <text x="40" y="120" font-family="sans-serif" font-size="16" font-weight="bold" letter-spacing="3" fill="#d1fae5" text-transform="uppercase">Web Development</text>
+  <text x="40" y="190" font-family="sans-serif" font-size="42" font-weight="bold" fill="#ffffff">JavaScript</text>
+  <text x="40" y="240" font-family="sans-serif" font-size="42" font-weight="bold" fill="#ffffff">Essentials</text>
+  <rect x="40" y="280" width="180" height="8" rx="4" fill="#a7f3d0"/>
+  <text x="40" y="330" font-family="sans-serif" font-size="18" fill="#d1fae5">12 lessons · 4 quizzes</text>
+</svg>

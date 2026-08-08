@@ -1,7 +1,72 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import {
+  BookOpenIcon,
+  UserGroupIcon,
+  CurrencyDollarIcon,
+  ChartBarIcon,
+  PlusIcon,
+  ArrowRightIcon,
+} from "@heroicons/react/24/outline";
+import CourseCard from "../../components/instructor/CourseCard";
+import { formatMoney } from "../../components/instructor/courseUtils";
+import { isPreviewMode } from "../../services/dataMode";
+import { courses as previewCourses, previewMutation } from "../../services/previewData";
+
+const DONUT_PALETTE = ["#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5", "#cbd5e1", "#94a3b8"];
+
+const buildMonthlySeries = (courses, metric) => {
+  if (!courses || courses.length === 0) return [];
+
+  const buckets = new Map();
+  courses.forEach((c) => {
+    const d = c.createdAt ? new Date(c.createdAt) : new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const value =
+      metric === "earnings"
+        ? (Number(c.price) || 0) * (c.numberOfUsersPaidForThisCourse || 0)
+        : c.numberOfUsersPaidForThisCourse || 0;
+    buckets.set(key, (buckets.get(key) || 0) + value);
+  });
+
+  let running = 0;
+  return [...buckets.keys()]
+    .sort()
+    .map((key) => {
+      running += buckets.get(key);
+      const [y, m] = key.split("-");
+      const date = new Date(Number(y), Number(m) - 1, 1);
+      return {
+        key,
+        label: date.toLocaleDateString(undefined, { month: "short", year: "numeric" }),
+        value: running,
+      };
+    });
+};
+
+const buildRevenueData = (courses) =>
+  (courses || [])
+    .map((c) => ({
+      _id: c._id,
+      name: c.name,
+      value: Math.round((Number(c.price) || 0) * (c.numberOfUsersPaidForThisCourse || 0)),
+      students: c.numberOfUsersPaidForThisCourse || 0,
+    }))
+    .sort((a, b) => b.value - a.value);
 
 const DashInstructor = () => {
   const navigate = useNavigate();
@@ -9,6 +74,7 @@ const DashInstructor = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [metric, setMetric] = useState("users");
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
@@ -25,22 +91,18 @@ const DashInstructor = () => {
 
   const fetchCourses = async () => {
     try {
-      console.log("📡 Fetching courses...");
-
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/courses`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const { data } = isPreviewMode
+        ? await previewCourses()
+        : await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/instructor/courses`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
 
       if (data.success) {
         setCourses(data.data);
       }
     } catch (error) {
-      console.error("❌ Fetch error:", error.message);
+      console.error("Fetch error:", error.message);
       toast.error("Failed to load courses");
     } finally {
       setLoading(false);
@@ -57,136 +119,356 @@ const DashInstructor = () => {
     try {
       setDeletingId(courseId);
 
-      console.log("🗑️ Deleting course:", courseId);
+      if (isPreviewMode) {
+        previewMutation("Deleting course");
+        return;
+      }
 
       const { data } = await axios.delete(
         `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (data.success) {
         toast.success("Course deleted successfully");
-        setCourses((prev) =>
-          prev.filter((course) => course._id !== courseId)
-        );
+        setCourses((prev) => prev.filter((course) => course._id !== courseId));
       } else {
         toast.error(data.message);
       }
     } catch (error) {
-      console.error("❌ Delete error:", error.message);
+      console.error("Delete error:", error.message);
       toast.error("Failed to delete course");
     } finally {
       setDeletingId(null);
     }
   };
 
-  // 📊 Stats
-  const totalEarnings = courses.reduce(
-    (sum, c) => sum + c.price * c.numberOfUsersPaidForThisCourse,
-    0
-  );
+  // ===== Derived stats from real course data =====
+  const stats = useMemo(() => {
+    const totalStudents = courses.reduce(
+      (sum, c) => sum + (c.numberOfUsersPaidForThisCourse || 0),
+      0
+    );
+    const totalEarnings = courses.reduce(
+      (sum, c) => sum + (Number(c.price) || 0) * (c.numberOfUsersPaidForThisCourse || 0),
+      0
+    );
+    return {
+      totalCourses: courses.length,
+      totalStudents,
+      totalEarnings,
+      avgEarnings: courses.length ? totalEarnings / courses.length : 0,
+    };
+  }, [courses]);
+
+  const seriesData = useMemo(() => buildMonthlySeries(courses, metric), [courses, metric]);
+  const revenueData = useMemo(() => buildRevenueData(courses), [courses]);
+  const totalRevenue = stats.totalEarnings;
+
+  // ===== Chart tooltips =====
+  const renderChartTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const { label, value } = payload[0].payload;
+    return (
+      <div className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg">
+        <p className="font-medium text-slate-300">{label}</p>
+        <p className="mt-0.5 font-semibold text-emerald-400">
+          {metric === "earnings" ? formatMoney(value) : `${value.toLocaleString()} ${value === 1 ? "user" : "users"}`}
+        </p>
+      </div>
+    );
+  };
+
+  const renderDonutTooltip = ({ active, payload }) => {
+    if (!active || !payload || !payload.length) return null;
+    const p = payload[0];
+    const pct = totalRevenue > 0 ? Math.round((p.value / totalRevenue) * 100) : 0;
+    return (
+      <div className="rounded-xl bg-slate-900 px-4 py-3 text-sm text-white shadow-lg">
+        <p className="font-medium text-slate-300">{p.name}</p>
+        <p className="mt-0.5 font-semibold text-emerald-400">
+          {formatMoney(p.value)} · {pct}%
+        </p>
+      </div>
+    );
+  };
+
+  const formatAxisValue = (v) =>
+    metric === "earnings" ? (v >= 1000 ? `$${(v / 1000).toFixed(v >= 100000 ? 0 : 1)}k` : `$${v}`) : `${v}`;
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        Loading dashboard...
+      <div className="min-h-screen bg-slate-50 py-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mb-8 h-8 w-64 animate-pulse rounded-lg bg-slate-200" />
+          <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-200" />
+            ))}
+          </div>
+          <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="h-80 animate-pulse rounded-2xl bg-slate-200 lg:col-span-2" />
+            <div className="h-80 animate-pulse rounded-2xl bg-slate-200" />
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-80 animate-pulse rounded-2xl bg-slate-200" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-3xl font-bold text-gray-800">
-            Instructor Dashboard
-          </h1>
-
+    <div className="min-h-screen bg-slate-50">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
+        {/* ===== Header ===== */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+              Instructor Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Welcome back — here's how your courses are performing.
+            </p>
+          </div>
           <button
             onClick={() => navigate("/AddCource")}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl font-semibold"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
           >
-            + New Course
+            <PlusIcon className="h-5 w-5" />
+            New Course
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-          <StatCard title="Courses" value={courses.length} />
-          <StatCard
-            title="Total Students"
-            value={courses.reduce(
-              (sum, c) => sum + c.numberOfUsersPaidForThisCourse,
-              0
-            )}
+        {/* ===== KPI Cards ===== */}
+        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <KpiCard
+            icon={<BookOpenIcon className="h-6 w-6" />}
+            iconClass="bg-emerald-600 text-white"
+            title="Total Courses"
+            value={String(stats.totalCourses)}
+            caption="active in your catalog"
           />
-          <StatCard title="Total Earnings" value={`$${totalEarnings}`} />
+          <KpiCard
+            icon={<UserGroupIcon className="h-6 w-6" />}
+            iconClass="bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+            title="Total Students"
+            value={stats.totalStudents.toLocaleString()}
+            caption="paid enrollments"
+          />
+          <KpiCard
+            icon={<CurrencyDollarIcon className="h-6 w-6" />}
+            iconClass="bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+            title="Total Earnings"
+            value={formatMoney(stats.totalEarnings)}
+            caption="lifetime revenue"
+          />
+          <KpiCard
+            icon={<ChartBarIcon className="h-6 w-6" />}
+            iconClass="bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200"
+            title="Avg. Earnings / Course"
+            value={formatMoney(stats.avgEarnings)}
+            caption="across all courses"
+          />
         </div>
 
-        {/* Courses */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <div
-              key={course._id}
-              className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition relative"
-            >
-              <img
-                src={course.imageCover}
-                alt={course.name}
-                className="h-40 w-full object-cover"
-              />
-
-              <div className="p-5">
-                <h3 className="font-bold text-lg text-gray-800 mb-1">
-                  {course.name}
-                </h3>
-
-                <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                  {course.description}
+        {/* ===== Analytics Section ===== */}
+        <div className="mb-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Performance chart */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6 lg:col-span-2">
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Performance Overview</h2>
+                <p className="mt-0.5 text-sm text-slate-500">
+                  Cumulative {metric === "earnings" ? "earnings" : "users"} by month
                 </p>
+              </div>
 
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Students</span>
-                  <span>{course.numberOfUsersPaidForThisCourse}</span>
-                </div>
-
-                <div className="flex justify-between text-sm mb-1">
-                  <span>Price</span>
-                  <span>${course.price}</span>
-                </div>
-
-                <div className="flex justify-between font-semibold">
-                  <span>Earnings</span>
-                  <span className="text-green-600">
-                    $
-                    {course.price *
-                      course.numberOfUsersPaidForThisCourse}
-                  </span>
-                </div>
-
-                {/* Delete Button */}
-                <button
-                  onClick={() => handleDelete(course._id)}
-                  disabled={deletingId === course._id}
-                  className="mt-4 w-full bg-red-100 hover:bg-red-200 text-red-600 font-semibold py-2 rounded-xl transition disabled:opacity-50"
-                >
-                  {deletingId === course._id
-                    ? "Deleting..."
-                    : "Delete Course"}
-                </button>
+              <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                {[
+                  { key: "users", label: "Users" },
+                  { key: "earnings", label: "Earnings" },
+                ].map((opt) => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setMetric(opt.key)}
+                    className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+                      metric === opt.key
+                        ? "bg-white text-emerald-700 shadow-sm"
+                        : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
-          ))}
+
+            {courses.length === 0 ? (
+              <EmptyAnalytics message="No analytics yet. Create your first course to start tracking performance here." />
+            ) : (
+              <div className="h-72">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={seriesData} margin={{ top: 5, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="emeraldFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis
+                      dataKey="label"
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      dy={8}
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tick={{ fill: "#64748b", fontSize: 12 }}
+                      tickFormatter={formatAxisValue}
+                      width={64}
+                    />
+                    <Tooltip content={renderChartTooltip} cursor={{ stroke: "#10b981", strokeWidth: 1, strokeDasharray: "4 4" }} />
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#059669"
+                      strokeWidth={2.5}
+                      fill="url(#emeraldFill)"
+                      activeDot={{ r: 5, strokeWidth: 0 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          {/* Revenue donut */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="text-lg font-semibold text-slate-900">Course Revenue</h2>
+            <p className="mt-0.5 text-sm text-slate-500">Share of total earnings per course</p>
+
+            {revenueData.length === 0 ? (
+              <EmptyAnalytics message="No analytics yet. Create your first course to see revenue distribution here." />
+            ) : totalRevenue <= 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+                  <CurrencyDollarIcon className="h-7 w-7 text-emerald-600" />
+                </div>
+                <p className="mt-4 font-medium text-slate-700">No revenue yet</p>
+                <p className="mt-1 max-w-[220px] text-sm text-slate-500">
+                  Earnings will appear here as students enroll in your courses.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="relative mx-auto h-52 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={revenueData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="68%"
+                        outerRadius="92%"
+                        paddingAngle={2}
+                        cornerRadius={6}
+                        strokeWidth={0}
+                      >
+                        {revenueData.map((entry, i) => (
+                          <Cell key={entry._id} fill={DONUT_PALETTE[i % DONUT_PALETTE.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip content={renderDonutTooltip} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-slate-900">{stats.totalCourses}</span>
+                    <span className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+                      Courses
+                    </span>
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <ul className="mt-5 max-h-60 space-y-2.5 overflow-y-auto pr-1">
+                  {revenueData.map((c, i) => {
+                    const pct = totalRevenue > 0 ? Math.round((c.value / totalRevenue) * 100) : 0;
+                    const isTop = i === 0 && c.value > 0;
+                    return (
+                      <li key={c._id} className="flex items-center gap-2.5 text-sm">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: DONUT_PALETTE[i % DONUT_PALETTE.length] }}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-slate-700">{c.name}</span>
+                        {isTop && (
+                          <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-700">
+                            Top
+                          </span>
+                        )}
+                        <span className="font-semibold text-slate-900">{formatMoney(c.value)}</span>
+                        <span className="w-10 text-right text-xs text-slate-400">{pct}%</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+          </div>
         </div>
 
-        {courses.length === 0 && (
-          <div className="text-center text-gray-500 mt-20">
-            No courses yet.
+        {/* ===== Recent Courses ===== */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Your Courses</h2>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Manage content, videos and student answers for each course.
+            </p>
+          </div>
+          {courses.length > 0 && (
+            <button
+              onClick={() => navigate("/AllCources")}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-600 transition-colors hover:text-emerald-700"
+            >
+              View all
+              <ArrowRightIcon className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {courses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white/60 px-6 py-16 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50">
+              <BookOpenIcon className="h-8 w-8 text-emerald-600" />
+            </div>
+            <h3 className="mt-5 text-lg font-semibold text-slate-900">No courses yet</h3>
+            <p className="mt-1 max-w-sm text-sm text-slate-500">
+              Create your first course to start building your catalog and earning revenue.
+            </p>
+            <button
+              onClick={() => navigate("/AddCource")}
+              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create your first course
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course) => (
+              <CourseCard
+                key={course._id}
+                course={course}
+                onDelete={handleDelete}
+                deletingId={deletingId}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -194,10 +476,25 @@ const DashInstructor = () => {
   );
 };
 
-const StatCard = ({ title, value }) => (
-  <div className="bg-white rounded-2xl shadow-md p-6">
-    <h3 className="text-gray-500 text-sm mb-1">{title}</h3>
-    <p className="text-2xl font-bold text-gray-800">{value}</p>
+const KpiCard = ({ icon, iconClass, title, value, caption }) => (
+  <div className="flex items-center gap-4 rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
+    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <p className="text-sm text-slate-500">{title}</p>
+      <p className="truncate text-2xl font-bold text-slate-900">{value}</p>
+      <p className="mt-0.5 text-xs text-emerald-600">{caption}</p>
+    </div>
+  </div>
+);
+
+const EmptyAnalytics = ({ message }) => (
+  <div className="flex flex-col items-center justify-center py-16 text-center">
+    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50">
+      <ChartBarIcon className="h-7 w-7 text-emerald-600" />
+    </div>
+    <p className="mt-4 max-w-[260px] text-sm text-slate-500">{message}</p>
   </div>
 );
 

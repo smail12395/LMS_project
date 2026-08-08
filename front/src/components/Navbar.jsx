@@ -53,25 +53,25 @@ useEffect(() => {
   ];
 
   return (
-    <nav className="bg-white shadow-md sticky top-0 z-50">
+    <nav className="bg-white/90 backdrop-blur-md border-b border-slate-200/70 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-blue-600">
-            LMS
+          <Link to="/" className="text-2xl font-extrabold tracking-tight text-slate-900">
+            LMS<span className="text-emerald-600">.</span>
           </Link>
 
           {/* Desktop Tabs */}
-          <div className="hidden md:flex space-x-8">
+          <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 className={({ isActive }) =>
-                  `px-3 py-2 text-sm font-medium transition ${
+                  `px-3.5 py-2 text-sm font-medium rounded-lg transition ${
                     isActive
-                      ? 'text-blue-600 border-b-2 border-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                   }`
                 }
               >
@@ -86,15 +86,15 @@ useEffect(() => {
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center focus:outline-none hover:bg-blue-700 transition"
+                  className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-bold flex items-center justify-center focus:outline-none ring-2 ring-emerald-100 hover:ring-emerald-200 transition"
                 >
                   {getInitials(userName)}
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-soft-lg py-1.5 border border-slate-200">
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                     >
                       Logout
                     </button>
@@ -104,7 +104,7 @@ useEffect(() => {
             ) : (
               <Link
                 to="/login"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="px-5 py-2.5 btn-brand text-sm"
               >
                 Login
               </Link>
@@ -113,7 +113,7 @@ useEffect(() => {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:text-blue-600 focus:outline-none"
+              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-slate-700 hover:text-emerald-600 focus:outline-none"
             >
               <svg
                 className="h-6 w-6"
@@ -133,17 +133,17 @@ useEffect(() => {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden pb-3">
+          <div className="md:hidden pb-3 space-y-1">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `block px-3 py-2 text-base font-medium ${
+                  `block px-3 py-2.5 text-base font-medium rounded-lg ${
                     isActive
-                      ? 'text-blue-600 bg-blue-50'
-                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                      ? 'text-emerald-700 bg-emerald-50'
+                      : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
                   }`
                 }
               >

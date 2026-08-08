@@ -10,10 +10,17 @@ import CourseDetails from './pages/instructor/CourseDetails';
 import Navbar from './components/Navbar';
 import VideoSeries from './pages/instructor/VideoSeries';
 import UsersAnswers from './pages/instructor/UsersAnswers';
+import ManageInstructors from './pages/admin/ManageInstructors';
+import { isPreviewMode } from './services/dataMode';
 
 const App = () => {
   return (
     <>
+      {isPreviewMode && (
+        <div className="bg-emerald-600 text-white text-center text-xs font-medium py-1.5 px-4 tracking-wide">
+          Preview Mode — data loaded from local preview-data files, no backend calls
+        </div>
+      )}
       <Navbar />
 
       <div className="mx-4 sm:mx-[10%]">
@@ -26,6 +33,7 @@ const App = () => {
           <Route path="/AllCources/:courseId" element={<CourseDetails />} />
           <Route path="/VideoSeries/:courseId" element={<VideoSeries />} />
           <Route path="/UsersAnswers/:courseId" element={<UsersAnswers />} />
+          <Route path="/ManageInstructors" element={<ManageInstructors />} />
         </Routes>
       </div>
     </>

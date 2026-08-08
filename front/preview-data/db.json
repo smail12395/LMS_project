@@ -1,0 +1,336 @@
+{
+  "publicCourses": [
+    {
+      "_id": "course-web-dev",
+      "name": "JavaScript Essentials",
+      "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+      "price": 192,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+      "instructorName": "Ahmed Salem",
+      "instructorSpeciality": "Senior Web Developer",
+      "courseSpeciality": "Web Development",
+      "instructor": { "_id": "instr-ahmed", "name": "Ahmed Salem", "speciality": "Senior Web Developer" },
+      "numberOfStudents": 1284,
+      "studentCount": 1284,
+      "lessonCount": 12,
+      "totalDuration": 14400,
+      "createdAt": "2026-06-10T09:00:00.000Z"
+    },
+    {
+      "_id": "course-uiux",
+      "name": "UI/UX Design Masterclass",
+      "description": "Learn user research, wireframing, prototyping and design systems to ship products people love.",
+      "price": 49,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-2.svg",
+      "instructorName": "Lina Hassan",
+      "instructorSpeciality": "Product Designer",
+      "courseSpeciality": "Design",
+      "instructor": { "_id": "instr-lina", "name": "Lina Hassan", "speciality": "Product Designer" },
+      "numberOfStudents": 756,
+      "studentCount": 756,
+      "lessonCount": 9,
+      "totalDuration": 10800,
+      "createdAt": "2026-05-22T09:00:00.000Z"
+    },
+    {
+      "_id": "course-data",
+      "name": "Python for Data Science",
+      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+      "price": 0,
+      "isFree": true,
+      "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+      "instructorName": "Omar Nabil",
+      "instructorSpeciality": "Data Scientist",
+      "courseSpeciality": "Data & AI",
+      "instructor": { "_id": "instr-omar", "name": "Omar Nabil", "speciality": "Data Scientist" },
+      "numberOfStudents": 2200,
+      "studentCount": 2200,
+      "lessonCount": 15,
+      "totalDuration": 18000,
+      "createdAt": "2026-07-02T09:00:00.000Z"
+    },
+    {
+      "_id": "course-marketing",
+      "name": "Digital Marketing Fundamentals",
+      "description": "SEO, content, social and paid campaigns — a complete playbook to grow any brand online.",
+      "price": 29,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-4.svg",
+      "instructorName": "Rana Adel",
+      "instructorSpeciality": "Growth Marketer",
+      "courseSpeciality": "Marketing",
+      "instructor": { "_id": "instr-rana", "name": "Rana Adel", "speciality": "Growth Marketer" },
+      "numberOfStudents": 430,
+      "studentCount": 430,
+      "lessonCount": 8,
+      "totalDuration": 9600,
+      "createdAt": "2026-07-28T09:00:00.000Z"
+    }
+  ],
+  "courses": [
+    {
+      "_id": "course-web-dev",
+      "name": "JavaScript Essentials",
+      "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+      "price": 192,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+      "instructorName": "Ahmed Salem",
+      "instructorSpeciality": "Senior Web Developer",
+      "courseSpeciality": "Web Development",
+      "numberOfStudents": 1284,
+      "createdAt": "2026-06-10T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-welcome",
+          "title": "Welcome & Course Roadmap",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Welcome to JavaScript Essentials! This roadmap shows you exactly how to go from zero to job-ready. Watch the intro video, then follow the lessons in order.",
+          "createdAt": "2026-06-10T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-image",
+          "title": "Client-Server Architecture Diagram",
+          "contentType": "image",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/content/content-image-1.svg",
+          "createdAt": "2026-06-11T10:00:00.000Z"
+        },
+        {
+          "_id": "cont-video",
+          "title": "How the Course Player Works",
+          "contentType": "video",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/videos/content-video-1.mp4",
+          "createdAt": "2026-06-12T10:00:00.000Z"
+        },
+        {
+          "_id": "cont-pdf",
+          "title": "Course Notes & Cheatsheet",
+          "contentType": "pdf",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/pdfs/sample-doc.pdf",
+          "createdAt": "2026-06-13T10:00:00.000Z"
+        }
+      ],
+      "videoSeries": [
+        {
+          "_id": "vid-a1",
+          "videoTitle": "Introduction & Setup",
+          "duration": 300,
+          "order": 0,
+          "filename": "course-video-1.mp4",
+          "thumbnailUrl": null,
+          "quizzes": [
+            {
+              "_id": "quiz-a1",
+              "question": "Which keyword declares a block-scoped variable in modern JavaScript?",
+              "options": ["let", "var", "const", "function"],
+              "correctAnswer": 0,
+              "points": 10
+            }
+          ]
+        },
+        {
+          "_id": "vid-a2",
+          "videoTitle": "Core Concepts & Variables",
+          "duration": 420,
+          "order": 1,
+          "filename": "course-video-2.mp4",
+          "thumbnailUrl": null,
+          "quizzes": [
+            {
+              "_id": "quiz-b1",
+              "question": "What does typeof null evaluate to?",
+              "options": ["object", "null", "undefined", "boolean"],
+              "correctAnswer": 0,
+              "points": 10
+            },
+            {
+              "_id": "quiz-b2",
+              "question": "Which method converts a JSON string into a JavaScript object?",
+              "options": ["JSON.parse", "JSON.stringify", "JSON.toObject", "JSON.convert"],
+              "correctAnswer": 0,
+              "points": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "course-uiux",
+      "name": "UI/UX Design Masterclass",
+      "description": "Learn user research, wireframing, prototyping and design systems to ship products people love.",
+      "price": 49,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-2.svg",
+      "instructorName": "Lina Hassan",
+      "instructorSpeciality": "Product Designer",
+      "courseSpeciality": "Design",
+      "numberOfStudents": 756,
+      "createdAt": "2026-05-22T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-b-free",
+          "title": "Free Preview — The Design Process",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Every great product starts with a clear process: research, define, ideate, prototype and test. This free lesson walks you through the first two steps.",
+          "createdAt": "2026-05-22T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-b-paid",
+          "title": "Revenue & Growth Charts",
+          "contentType": "image",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/content/content-image-2.svg",
+          "createdAt": "2026-05-23T10:00:00.000Z"
+        }
+      ],
+      "videoSeries": [
+        {
+          "_id": "vid-b1",
+          "videoTitle": "Intro to Design Systems",
+          "duration": 240,
+          "order": 0,
+          "filename": "course-video-1.mp4",
+          "thumbnailUrl": null,
+          "quizzes": [
+            {
+              "_id": "quiz-c1",
+              "question": "Which tool is commonly used for high-fidelity UI prototyping?",
+              "options": ["Figma", "Photoshop", "Excel", "Slack"],
+              "correctAnswer": 0,
+              "points": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "course-data",
+      "name": "Python for Data Science",
+      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+      "price": 0,
+      "isFree": true,
+      "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+      "instructorName": "Omar Nabil",
+      "instructorSpeciality": "Data Scientist",
+      "courseSpeciality": "Data & AI",
+      "numberOfStudents": 2200,
+      "createdAt": "2026-07-02T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-c-welcome",
+          "title": "Getting Started with Jupyter",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Jupyter notebooks are the heart of data science. Install Anaconda, launch Jupyter Lab, and create your first notebook with us.",
+          "createdAt": "2026-07-02T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-c-pdf",
+          "title": "Pandas Quick Reference",
+          "contentType": "pdf",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/pdfs/sample-doc.pdf",
+          "createdAt": "2026-07-03T10:00:00.000Z"
+        }
+      ],
+      "videoSeries": [
+        {
+          "_id": "vid-c1",
+          "videoTitle": "Series Intro — Pandas Basics",
+          "duration": 360,
+          "order": 0,
+          "filename": "course-video-1.mp4",
+          "thumbnailUrl": null,
+          "quizzes": [
+            {
+              "_id": "quiz-d1",
+              "question": "Which library is primarily used for tabular data analysis in Python?",
+              "options": ["pandas", "flask", "django", "requests"],
+              "correctAnswer": 0,
+              "points": 10
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "_id": "course-marketing",
+      "name": "Digital Marketing Fundamentals",
+      "description": "SEO, content, social and paid campaigns — a complete playbook to grow any brand online.",
+      "price": 29,
+      "isFree": false,
+      "imageCover": "/preview-data/storage/courses/course-cover-4.svg",
+      "instructorName": "Rana Adel",
+      "instructorSpeciality": "Growth Marketer",
+      "courseSpeciality": "Marketing",
+      "numberOfStudents": 430,
+      "createdAt": "2026-07-28T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-d-free",
+          "title": "Free Preview — SEO in 5 Minutes",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Search engines decide what to show based on relevance and authority. Keywords, meta descriptions and internal links are the basics you need to know.",
+          "createdAt": "2026-07-28T09:05:00.000Z"
+        }
+      ],
+      "videoSeries": []
+    }
+  ],
+  "myCourses": [
+    {
+      "course": {
+        "_id": "course-web-dev",
+        "name": "JavaScript Essentials",
+        "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+        "price": 192,
+        "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+        "instructorName": "Ahmed Salem"
+      },
+      "enrolledAt": "2026-07-15T12:30:00.000Z"
+    },
+    {
+      "course": {
+        "_id": "course-data",
+        "name": "Python for Data Science",
+        "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+        "price": 0,
+        "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+        "instructorName": "Omar Nabil"
+      },
+      "enrolledAt": "2026-07-03T08:00:00.000Z"
+    }
+  ],
+  "profile": {
+    "_id": "user-demo",
+    "name": "Sarah Demo",
+    "email": "sarah@example.com",
+    "phoneNumber": "+1 555 0100",
+    "verified": true,
+    "createdAt": "2026-02-14T09:00:00.000Z",
+    "lastLogin": "2026-08-08T14:22:00.000Z"
+  },
+  "quizAnswers": [
+    {
+      "_id": "ans-a1",
+      "quiz": "quiz-a1",
+      "firstShot": { "isCorrect": true, "selectedOption": 0, "duration": 12 },
+      "secondShot": null
+    }
+  ],
+  "paymentInfo": {
+    "courseId": "course-uiux",
+    "courseName": "UI/UX Design Masterclass",
+    "instructorName": "Lina Hassan",
+    "price": 49,
+    "stripePublicKey": "pk_test_51PreviewDummyKeyForDemo"
+  }
+}

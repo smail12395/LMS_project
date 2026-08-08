@@ -2,6 +2,28 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { isPreviewMode } from "../../services/dataMode";
+import { videoSeries as previewVideoSeries, previewMutation } from "../../services/previewData";
+
+// Local, network-free fallback thumbnail. This avoids the retry loop
+// caused by repeatedly re-requesting a failing remote image URL.
+const THUMBNAIL_FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
+      <rect width="400" height="200" fill="#059669"/>
+      <g fill="#FFFFFF" fill-opacity="0.9" transform="translate(184,84)">
+        <path d="M0 0 L32 16 L0 32 Z"/>
+      </g>
+      <text x="200" y="150" font-family="sans-serif" font-size="16" fill="#FFFFFF"
+            text-anchor="middle" opacity="0.85">Video Thumbnail</text>
+    </svg>
+  `);
+
+const deriveThumbnailUrl = (video) => {
+  if (video.thumbnailUrl) return video.thumbnailUrl;
+  return null;
+};
 
 const VideoSeries = () => {
   const { courseId } = useParams();
@@ -55,7 +77,7 @@ const VideoSeries = () => {
     
     const confirmed = await showConfirmDialog(
       `Delete "${videoTitle}"?`,
-      `This will permanently delete the video and all its quizzes.\nThe video file will also be removed from Cloudinary storage.`,
+      `This will permanently delete the video and all its quizzes.\nThe video file will also be removed from local storage.`,
       "Delete",
       "Cancel"
     );
@@ -65,6 +87,11 @@ const VideoSeries = () => {
     setDeletingVideoId(videoIdString);
     
     try {
+      if (isPreviewMode) {
+        previewMutation("Deleting video");
+        return;
+      }
+
       const response = await axios.delete(
         `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series/${videoIdString}`,
         {
@@ -75,7 +102,7 @@ const VideoSeries = () => {
       if (response.data.success) {
         toast.success(
           `${videoTitle} deleted successfully` +
-          (response.data.deletedVideo?.hadCloudinaryCleanup ? " (Cloudinary cleaned)" : "")
+          (response.data.deletedVideo?.hadStorageCleanup ? " (local file removed)" : "")
         );
         
         // FIX: Optimistic UI update with proper ID comparison
@@ -109,12 +136,14 @@ const VideoSeries = () => {
   useEffect(() => {
     const fetchExistingVideos = async () => {
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const res = isPreviewMode
+          ? await previewVideoSeries(courseId)
+          : await axios.get(
+              `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
 
         console.log("API Response for existing videos:", res.data); // Debug log
         
@@ -226,15 +255,23 @@ const VideoSeries = () => {
         toast.error(`Video ${i + 1} must have a file selected`);
         return;
       }
-      if (video.file.size > 100 * 1024 * 1024) {
-        toast.error(`Video ${i + 1} must be under 100MB (current: ${(video.file.size / (1024 * 1024)).toFixed(2)}MB)`);
+      if (video.file.size > 500 * 1024 * 1024) {
+        toast.error(`Video ${i + 1} must be under 500MB (current: ${(video.file.size / (1024 * 1024)).toFixed(2)}MB)`);
         return;
       }
     }
 
     try {
       setSaving(true);
-      
+
+      if (isPreviewMode) {
+        previewMutation("Uploading videos");
+        setVideoCount(1);
+        setVideos([]);
+        toast.success("Videos uploaded successfully! (preview)");
+        return;
+      }
+
       const formData = new FormData();
       const existingCount = existingVideos.length;
       
@@ -297,12 +334,12 @@ const VideoSeries = () => {
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Modal Header */}
           <div className="flex justify-between items-center p-6 border-b">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="text-2xl font-bold text-slate-900">
               Manage Quizzes for Video {activeVideoIndex + 1}
             </h2>
             <button
               onClick={() => setShowQuizModal(false)}
-              className="text-gray-500 hover:text-gray-700 text-2xl"
+              className="text-slate-500 hover:text-slate-700 text-2xl"
             >
               ✕
             </button>
@@ -311,14 +348,14 @@ const VideoSeries = () => {
           {/* Modal Body - Scrollable */}
           <div className="flex-1 overflow-y-auto p-6">
             {modalQuizzes.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-slate-500">
                 No quizzes added yet. Click "Add Quiz" to start.
               </div>
             ) : (
               modalQuizzes.map((quiz, quizIndex) => (
-                <div key={quizIndex} className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+                <div key={quizIndex} className="mb-6 p-4 border border-slate-200 rounded-lg bg-slate-50">
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-semibold text-lg text-gray-700">
+                    <h3 className="font-semibold text-lg text-slate-700">
                       Quiz {quizIndex + 1}
                     </h3>
                     <button
@@ -331,21 +368,21 @@ const VideoSeries = () => {
 
                   {/* Question Input */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       Question
                     </label>
                     <input
                       type="text"
                       value={quiz.question}
                       onChange={(e) => handleQuizChange(quizIndex, "question", e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       placeholder="Enter the question..."
                     />
                   </div>
 
                   {/* Options */}
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
                       Options (Select the correct one)
                     </label>
                     {[0, 1, 2, 3].map((optionIndex) => (
@@ -361,7 +398,7 @@ const VideoSeries = () => {
                           type="text"
                           value={quiz.options[optionIndex] || ""}
                           onChange={(e) => handleOptionChange(quizIndex, optionIndex, e.target.value)}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="flex-1 px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                           placeholder={`Option ${optionIndex + 1}`}
                         />
                       </div>
@@ -370,7 +407,7 @@ const VideoSeries = () => {
 
                   {/* Points */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       Points
                     </label>
                     <input
@@ -378,7 +415,7 @@ const VideoSeries = () => {
                       min="1"
                       value={quiz.points}
                       onChange={(e) => handleQuizChange(quizIndex, "points", parseInt(e.target.value) || 10)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -397,13 +434,13 @@ const VideoSeries = () => {
             <div className="space-x-3">
               <button
                 onClick={() => setShowQuizModal(false)}
-                className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                className="px-6 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveQuizzes}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
               >
                 Save Quizzes ({modalQuizzes.length})
               </button>
@@ -428,10 +465,10 @@ const VideoSeries = () => {
       {/* ================= TIMELINE BAR SECTION ================= */}
       {existingVideos.length > 0 && !loadingExisting && (
         <section className="mb-10">
-          <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-5 shadow">
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-5 shadow">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-800">Video Series Timeline</h3>
-              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-3 py-1 rounded-full text-sm">
+              <h3 className="text-xl font-bold text-slate-900">Video Series Timeline</h3>
+              <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-3 py-1 rounded-full text-sm">
                 {existingVideos.length} Videos
               </span>
             </div>
@@ -439,7 +476,7 @@ const VideoSeries = () => {
             {/* Timeline Container */}
             <div className="relative">
               {/* Timeline Line */}
-              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-indigo-200 to-purple-200 -translate-y-1/2 z-0"></div>
+              <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-gradient-to-r from-emerald-200 to-teal-200 -translate-y-1/2 z-0"></div>
               
               {/* Timeline Nodes */}
               <div className="relative z-10 flex items-center justify-between">
@@ -453,7 +490,7 @@ const VideoSeries = () => {
                       <div key={videoId || index} className="flex flex-col items-center flex-1">
                         {/* Timeline Node */}
                         <div 
-                          className="relative w-12 h-12 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg group"
+                          className="relative w-12 h-12 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-lg group"
                           title={`Video ${video.order + 1}: ${video.videoTitle}`}
                         >
                           <span className="text-white font-bold text-sm">
@@ -461,25 +498,25 @@ const VideoSeries = () => {
                           </span>
                           
                           {/* Hover Tooltip */}
-                          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-gray-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-20">
+                          <div className="absolute bottom-full mb-2 hidden group-hover:block bg-slate-900 text-white text-xs rounded py-1 px-2 whitespace-nowrap z-20">
                             <div className="font-semibold">{video.videoTitle || `Video ${video.order + 1}`}</div>
-                            <div className="text-gray-300">
+                            <div className="text-slate-300">
                               {video.quizzes?.length || 0} quizzes • {video.duration ? `${Math.floor(video.duration / 60)}m` : 'N/A'}
                             </div>
                           </div>
                           
                           {/* Connecting Arrow (except for last) */}
                           {!isLast && (
-                            <div className="absolute right-0 translate-x-full w-8 h-0.5 bg-gradient-to-r from-indigo-400 to-purple-400"></div>
+                            <div className="absolute right-0 translate-x-full w-8 h-0.5 bg-gradient-to-r from-emerald-400 to-teal-400"></div>
                           )}
                         </div>
                         
                         {/* Video Info Below Node */}
                         <div className="mt-3 text-center max-w-[100px]">
-                          <div className="text-xs font-medium text-gray-700 truncate">
+                          <div className="text-xs font-medium text-slate-700 truncate">
                             {video.videoTitle || `Video ${video.order + 1}`}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1 flex items-center justify-center gap-1">
+                          <div className="text-xs text-slate-500 mt-1 flex items-center justify-center gap-1">
                             <span className="flex items-center">
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M9 5v2h6V5h2v2h2a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V9a2 2 0 012-2h2V5h2m0 4H5v10h14V9h-4v2h-2V9H9z" />
@@ -495,13 +532,13 @@ const VideoSeries = () => {
               
               {/* Timeline Progress Bar (Optional) */}
               <div className="mt-6">
-                <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
                   <span>Video Progress</span>
                   <span>{existingVideos.length} total</span>
                 </div>
-                <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full transition-all duration-500"
                     style={{ width: '100%' }}
                   ></div>
                 </div>
@@ -514,8 +551,8 @@ const VideoSeries = () => {
       {/* Existing Videos Section */}
       <section className="mb-12">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-gray-800">Existing Video Series</h2>
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+          <h2 className="text-3xl font-bold text-slate-900">Existing Video Series</h2>
+          <span className="bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full text-sm font-medium">
             {existingVideos.length} videos
           </span>
         </div>
@@ -524,17 +561,17 @@ const VideoSeries = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
-                <div className="bg-gray-200 h-48 rounded-lg mb-4"></div>
-                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                <div className="bg-slate-200 h-48 rounded-lg mb-4"></div>
+                <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
               </div>
             ))}
           </div>
         ) : existingVideos.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-xl">
-            <div className="text-gray-400 text-6xl mb-4">🎬</div>
-            <h3 className="text-xl font-medium text-gray-600 mb-2">No videos yet</h3>
-            <p className="text-gray-500">Start by adding your first video series below.</p>
+          <div className="text-center py-12 border-2 border-dashed border-slate-300 rounded-xl">
+            <div className="text-slate-400 text-6xl mb-4">🎬</div>
+            <h3 className="text-xl font-medium text-slate-600 mb-2">No videos yet</h3>
+            <p className="text-slate-500">Start by adding your first video series below.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -542,19 +579,21 @@ const VideoSeries = () => {
               const videoId = getVideoIdString(video._id);
               
               return (
-                <div key={videoId || index} className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                  <div className="relative h-48 bg-gray-900">
-                    {video.videoUrl ? (
+                <div key={videoId || index} className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                  <div className="relative h-48 bg-slate-900">
+                    {video.filename ? (
                       <img
-                        src={`${video.videoUrl.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')}`}
+                        src={deriveThumbnailUrl(video) || THUMBNAIL_FALLBACK}
                         alt={video.videoTitle}
                         className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/400x200/4F46E5/FFFFFF?text=Video+Thumbnail";
+                          if (e.target.dataset.fallbackApplied) return;
+                          e.target.dataset.fallbackApplied = "true";
+                          e.target.src = THUMBNAIL_FALLBACK;
                         }}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600">
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-emerald-500 to-teal-600">
                         <span className="text-white text-4xl">🎥</span>
                       </div>
                     )}
@@ -563,10 +602,10 @@ const VideoSeries = () => {
                     </div>
                   </div>
                   <div className="p-4">
-                    <h3 className="font-bold text-lg text-gray-800 mb-2 truncate">
+                    <h3 className="font-bold text-lg text-slate-900 mb-2 truncate">
                       {video.videoTitle || `Video ${index + 1}`}
                     </h3>
-                    <div className="flex items-center justify-between text-sm text-gray-600">
+                    <div className="flex items-center justify-between text-sm text-slate-600">
                       <div className="flex items-center space-x-4">
                         <span className="flex items-center">
                           <span className="mr-1">❓</span>
@@ -582,10 +621,10 @@ const VideoSeries = () => {
                         disabled={deletingVideoId === videoId || !videoId}
                         className={`flex items-center space-x-1 px-3 py-1 rounded-lg transition-colors focus:outline-none focus:ring-2 ${
                           deletingVideoId === videoId || !videoId
-                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                             : 'bg-red-50 text-red-600 hover:bg-red-100 focus:ring-red-500'
                         }`}
-                        title={!videoId ? "Video ID is missing" : "Delete video and remove from Cloudinary"}
+                        title={!videoId ? "Video ID is missing" : "Delete video and remove from local storage"}
                       >
                         {deletingVideoId === videoId ? (
                           <>
@@ -606,7 +645,7 @@ const VideoSeries = () => {
                       </button>
                     </div>
                     {videoId && (
-                      <div className="mt-2 text-xs text-gray-500 truncate">
+                      <div className="mt-2 text-xs text-slate-500 truncate">
                         ID: {videoId.substring(0, 12)}...
                       </div>
                     )}
@@ -619,19 +658,19 @@ const VideoSeries = () => {
       </section>
 
       {/* Add New Videos Section */}
-      <section className="bg-white rounded-xl shadow-lg p-6 mb-8">
-        <h2 className="text-3xl font-bold text-gray-800 mb-6">Add New Video Series</h2>
+      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 mb-8">
+        <h2 className="text-3xl font-bold text-slate-900 mb-6">Add New Video Series</h2>
         
         {/* Video Count Selector */}
         <div className="mb-8">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-slate-700 mb-2">
             How many videos do you want to add?
           </label>
           <div className="flex items-center space-x-4">
             <select
               value={videoCount}
               onChange={(e) => setVideoCount(Number(e.target.value))}
-              className="border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-32"
+              className="border border-slate-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent w-32"
             >
               {Array.from({ length: 20 }, (_, i) => i + 1).map((num) => (
                 <option key={num} value={num}>
@@ -639,7 +678,7 @@ const VideoSeries = () => {
                 </option>
               ))}
             </select>
-            <span className="text-gray-500">
+            <span className="text-slate-500">
               {videos.filter(v => v.file).length} / {videoCount} files selected
             </span>
           </div>
@@ -648,10 +687,10 @@ const VideoSeries = () => {
         {/* Video Inputs */}
         <div className="space-y-6 mb-8">
           {videos.map((video, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-5 hover:border-blue-300 transition-colors">
+            <div key={index} className="border border-slate-200 rounded-lg p-5 hover:border-emerald-300 transition-colors">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 flex items-center">
-                  <span className="bg-blue-100 text-blue-800 w-8 h-8 rounded-full flex items-center justify-center mr-3">
+                <h3 className="text-lg font-semibold text-slate-900 flex items-center">
+                  <span className="bg-emerald-100 text-emerald-800 w-8 h-8 rounded-full flex items-center justify-center mr-3">
                     {index + 1}
                   </span>
                   Video {index + 1}
@@ -660,8 +699,8 @@ const VideoSeries = () => {
                   onClick={() => openQuizModal(index)}
                   className={`px-4 py-2 rounded-lg transition-colors ${
                     video.quizzes.length > 0
-                      ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                   }`}
                 >
                   {video.quizzes.length > 0 ? `Quizzes (${video.quizzes.length})` : 'Add Quizzes'}
@@ -674,14 +713,14 @@ const VideoSeries = () => {
                   type="text"
                   value={video.title}
                   onChange={(e) => handleVideoChange(index, 'title', e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   placeholder="Enter video title..."
                 />
               </div>
 
               {/* File Input */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Select Video File
                 </label>
                 <div className="flex items-center space-x-4">
@@ -695,10 +734,10 @@ const VideoSeries = () => {
                         handleVideoChange(index, 'preview', URL.createObjectURL(file));
                       }
                     }}
-                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
                   />
                   {video.file && (
-                    <span className="text-sm text-gray-600">
+                    <span className="text-sm text-slate-600">
                       {(video.file.size / (1024 * 1024)).toFixed(2)} MB
                     </span>
                   )}
@@ -714,11 +753,11 @@ const VideoSeries = () => {
               {/* Video Preview */}
               {video.preview && (
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Preview:</p>
+                  <p className="text-sm font-medium text-slate-700 mb-2">Preview:</p>
                   <video
                     src={video.preview}
                     controls
-                    className="w-full rounded-lg border border-gray-300 max-h-64"
+                    className="w-full rounded-lg border border-slate-300 max-h-64"
                   />
                 </div>
               )}
@@ -733,7 +772,7 @@ const VideoSeries = () => {
             disabled={saving || videos.some(v => !v.title || !v.file)}
             className={`px-8 py-3 rounded-lg font-medium transition-all ${
               saving || videos.some(v => !v.title || !v.file)
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-slate-300 text-slate-500 cursor-not-allowed'
                 : 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl'
             }`}
           >

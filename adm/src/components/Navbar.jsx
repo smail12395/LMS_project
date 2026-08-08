@@ -27,33 +27,45 @@ const Navbar = () => {
 
   const isActive = (path) =>
     location.pathname === path
-      ? "text-indigo-600 font-semibold"
-      : "text-gray-700 hover:text-indigo-600";
+      ? "text-emerald-600 font-semibold"
+      : "text-slate-600 hover:text-emerald-600";
 
   if (loading) {
     return (
       <div className="w-full h-16 flex items-center px-6 bg-white shadow-sm">
-        <span className="text-gray-400">Loading...</span>
+        <span className="text-slate-400">Loading...</span>
       </div>
     );
   }
+
+  const isAdmin = role === "admin";
+
+  // When the instructor is on a course-scoped page (/AllCources/:courseId,
+  // /VideoSeries/:courseId or /UsersAnswers/:courseId) we can build a
+  // course-aware "Users Answers" link that passes the same courseId.
+  const currentCourseId = (() => {
+    const m = location.pathname.match(/^\/(?:AllCources|VideoSeries|UsersAnswers)\/([^/]+)/);
+    return m ? m[1] : null;
+  })();
+
+  const isUsersAnswersActive =
+    /^\/UsersAnswers\//.test(location.pathname) && currentCourseId;
 
   return (
     <nav className="w-full bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          
           {/* Brand */}
           <div className="flex items-center gap-3">
             <span
-              onClick={() => navigate("/")}
-              className="text-2xl font-bold text-indigo-600 cursor-pointer"
+              onClick={() => navigate(isAdmin ? "/ManageInstructors" : "/")}
+              className="text-2xl font-bold text-emerald-600 cursor-pointer"
             >
               ED AI
             </span>
 
             {role && (
-              <span className="hidden sm:inline-block text-xs px-2 py-1 rounded-full bg-indigo-100 text-indigo-600 font-medium">
+              <span className="hidden sm:inline-block text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium">
                 {role}
               </span>
             )}
@@ -65,20 +77,44 @@ const Navbar = () => {
               <Link to="/login" className={isActive("/login")}>
                 Login
               </Link>
+            ) : isAdmin ? (
+              <>
+                <Link to="/ManageInstructors" className={isActive("/ManageInstructors")}>
+                  Dashboard
+                </Link>
+                <Link to="/ManageInstructors" className={isActive("/ManageInstructors")}>
+                  Manage Instructors
+                </Link>
+                <button
+                  onClick={logout}
+                  className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg transition"
+                >
+                  Logout
+                </button>
+              </>
             ) : (
               <>
                 <Link to="/" className={isActive("/")}>
                   Dashboard
                 </Link>
-
                 <Link to="/AddCource" className={isActive("/AddCource")}>
                   Add Course
                 </Link>
-
                 <Link to="/AllCources" className={isActive("/AllCources")}>
                   All Courses
                 </Link>
-
+                {currentCourseId && (
+                  <Link
+                    to={`/UsersAnswers/${currentCourseId}`}
+                    className={
+                      isUsersAnswersActive
+                        ? "text-emerald-600 font-semibold"
+                        : "text-slate-600 hover:text-emerald-600"
+                    }
+                  >
+                    Users Answers
+                  </Link>
+                )}
                 <button
                   onClick={logout}
                   className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg transition"
@@ -109,36 +145,69 @@ const Navbar = () => {
               <Link
                 to="/login"
                 onClick={() => setMenuOpen(false)}
-                className="text-gray-700 hover:text-indigo-600"
+                className="text-slate-600 hover:text-emerald-600"
               >
                 Login
               </Link>
+            ) : isAdmin ? (
+              <>
+                <Link
+                  to="/ManageInstructors"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-slate-600 hover:text-emerald-600"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  to="/ManageInstructors"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-slate-600 hover:text-emerald-600"
+                >
+                  Manage Instructors
+                </Link>
+                <button
+                  onClick={logout}
+                  className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-left"
+                >
+                  Logout
+                </button>
+              </>
             ) : (
               <>
                 <Link
                   to="/"
                   onClick={() => setMenuOpen(false)}
-                  className="text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-emerald-600"
                 >
                   Dashboard
                 </Link>
-
                 <Link
                   to="/AddCource"
                   onClick={() => setMenuOpen(false)}
-                  className="text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-emerald-600"
                 >
                   Add Course
                 </Link>
-
                 <Link
                   to="/AllCources"
                   onClick={() => setMenuOpen(false)}
-                  className="text-gray-700 hover:text-indigo-600"
+                  className="text-slate-600 hover:text-emerald-600"
                 >
                   All Courses
                 </Link>
-
+                {currentCourseId && (
+                  <Link
+                    to={`/UsersAnswers/${currentCourseId}`}
+                    onClick={() => setMenuOpen(false)}
+                    className={
+                      isUsersAnswersActive
+                        ? "text-emerald-600 font-semibold"
+                        : "text-slate-600 hover:text-emerald-600"
+                    }
+                  >
+                    Users Answers
+                  </Link>
+                )}
                 <button
                   onClick={logout}
                   className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-left"

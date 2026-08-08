@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360" viewBox="0 0 640 360">
+  <defs>
+    <linearGradient id="g2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#312e81"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+  </defs>
+  <rect width="640" height="360" fill="url(#g2)"/>
+  <circle cx="40" cy="40" r="120" fill="#ffffff" opacity="0.08"/>
+  <circle cx="600" cy="340" r="160" fill="#ffffff" opacity="0.06"/>
+  <text x="40" y="120" font-family="sans-serif" font-size="16" font-weight="bold" letter-spacing="3" fill="#e0e7ff" text-transform="uppercase">Design</text>
+  <text x="40" y="190" font-family="sans-serif" font-size="42" font-weight="bold" fill="#ffffff">UI/UX Design</text>
+  <text x="40" y="240" font-family="sans-serif" font-size="42" font-weight="bold" fill="#ffffff">Masterclass</text>
+  <rect x="40" y="280" width="180" height="8" rx="4" fill="#c7d2fe"/>
+  <text x="40" y="330" font-family="sans-serif" font-size="18" fill="#e0e7ff">9 lessons · 3 quizzes</text>
+</svg>

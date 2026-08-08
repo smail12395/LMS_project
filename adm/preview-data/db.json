@@ -1,0 +1,295 @@
+{
+  "instructors": [
+    {
+      "_id": "instr-ahmed",
+      "name": "Ahmed Salem",
+      "email": "ahmed@example.com",
+      "speciality": "Senior Web Developer",
+      "stripePublicKey": "pk_test_51PreviewDummyKey",
+      "stripeSecretKey": "sk_test_51PreviewDummyKey",
+      "courses": ["course-web-dev"]
+    },
+    {
+      "_id": "instr-lina",
+      "name": "Lina Hassan",
+      "email": "lina@example.com",
+      "speciality": "Product Designer",
+      "stripePublicKey": "pk_test_51PreviewDummyKey",
+      "stripeSecretKey": "sk_test_51PreviewDummyKey",
+      "courses": ["course-uiux"]
+    },
+    {
+      "_id": "instr-omar",
+      "name": "Omar Nabil",
+      "email": "omar@example.com",
+      "speciality": "Data Scientist",
+      "stripePublicKey": "pk_test_51PreviewDummyKey",
+      "stripeSecretKey": "sk_test_51PreviewDummyKey",
+      "courses": ["course-data"]
+    }
+  ],
+  "courses": [
+    {
+      "_id": "course-web-dev",
+      "name": "JavaScript Essentials",
+      "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+      "price": 192,
+      "isFree": false,
+      "courseSpeciality": "Web Development",
+      "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+      "numberOfUsersPaidForThisCourse": 1284,
+      "createdAt": "2026-06-10T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-welcome",
+          "title": "Welcome & Course Roadmap",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Welcome to JavaScript Essentials! This roadmap shows you exactly how to go from zero to job-ready.",
+          "createdAt": "2026-06-10T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-image",
+          "title": "Client-Server Architecture Diagram",
+          "contentType": "image",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/content/content-image-1.svg",
+          "createdAt": "2026-06-11T10:00:00.000Z"
+        },
+        {
+          "_id": "cont-video",
+          "title": "How the Course Player Works",
+          "contentType": "video",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/videos/content-video-1.mp4",
+          "createdAt": "2026-06-12T10:00:00.000Z"
+        },
+        {
+          "_id": "cont-pdf",
+          "title": "Course Notes & Cheatsheet",
+          "contentType": "pdf",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/pdfs/sample-doc.pdf",
+          "createdAt": "2026-06-13T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "_id": "course-uiux",
+      "name": "UI/UX Design Masterclass",
+      "description": "Learn user research, wireframing, prototyping and design systems to ship products people love.",
+      "price": 49,
+      "isFree": false,
+      "courseSpeciality": "Design",
+      "imageCover": "/preview-data/storage/courses/course-cover-2.svg",
+      "numberOfUsersPaidForThisCourse": 756,
+      "createdAt": "2026-05-22T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-b-free",
+          "title": "Free Preview — The Design Process",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Every great product starts with a clear process: research, define, ideate, prototype and test.",
+          "createdAt": "2026-05-22T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-b-paid",
+          "title": "Revenue & Growth Charts",
+          "contentType": "image",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/content/content-image-2.svg",
+          "createdAt": "2026-05-23T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "_id": "course-data",
+      "name": "Python for Data Science",
+      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+      "price": 0,
+      "isFree": true,
+      "courseSpeciality": "Data & AI",
+      "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+      "numberOfUsersPaidForThisCourse": 0,
+      "createdAt": "2026-07-02T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-c-welcome",
+          "title": "Getting Started with Jupyter",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Jupyter notebooks are the heart of data science. Install Anaconda and launch Jupyter Lab.",
+          "createdAt": "2026-07-02T09:05:00.000Z"
+        },
+        {
+          "_id": "cont-c-pdf",
+          "title": "Pandas Quick Reference",
+          "contentType": "pdf",
+          "availability": "paid",
+          "contentData": "/preview-data/storage/pdfs/sample-doc.pdf",
+          "createdAt": "2026-07-03T10:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "_id": "course-marketing",
+      "name": "Digital Marketing Fundamentals",
+      "description": "SEO, content, social and paid campaigns — a complete playbook to grow any brand online.",
+      "price": 29,
+      "isFree": false,
+      "courseSpeciality": "Marketing",
+      "imageCover": "/preview-data/storage/courses/course-cover-4.svg",
+      "numberOfUsersPaidForThisCourse": 430,
+      "createdAt": "2026-07-28T09:00:00.000Z",
+      "content": [
+        {
+          "_id": "cont-d-free",
+          "title": "Free Preview — SEO in 5 Minutes",
+          "contentType": "postText",
+          "availability": "free",
+          "contentData": "Search engines decide what to show based on relevance and authority.",
+          "createdAt": "2026-07-28T09:05:00.000Z"
+        }
+      ]
+    }
+  ],
+  "videoSeries": {
+    "course-web-dev": [
+      {
+        "_id": "vid-a1",
+        "videoTitle": "Introduction & Setup",
+        "duration": 300,
+        "order": 0,
+        "filename": "course-video-1.mp4",
+        "thumbnailUrl": null,
+        "quizzes": [
+          {
+            "_id": "quiz-a1",
+            "question": "Which keyword declares a block-scoped variable in modern JavaScript?",
+            "options": ["let", "var", "const", "function"],
+            "correctAnswer": 0,
+            "points": 10
+          }
+        ]
+      },
+      {
+        "_id": "vid-a2",
+        "videoTitle": "Core Concepts & Variables",
+        "duration": 420,
+        "order": 1,
+        "filename": "course-video-2.mp4",
+        "thumbnailUrl": null,
+        "quizzes": [
+          {
+            "_id": "quiz-b1",
+            "question": "What does typeof null evaluate to?",
+            "options": ["object", "null", "undefined", "boolean"],
+            "correctAnswer": 0,
+            "points": 10
+          },
+          {
+            "_id": "quiz-b2",
+            "question": "Which method converts a JSON string into a JavaScript object?",
+            "options": ["JSON.parse", "JSON.stringify", "JSON.toObject", "JSON.convert"],
+            "correctAnswer": 0,
+            "points": 10
+          }
+        ]
+      }
+    ],
+    "course-uiux": [
+      {
+        "_id": "vid-b1",
+        "videoTitle": "Intro to Design Systems",
+        "duration": 240,
+        "order": 0,
+        "filename": "course-video-1.mp4",
+        "thumbnailUrl": null,
+        "quizzes": [
+          {
+            "_id": "quiz-c1",
+            "question": "Which tool is commonly used for high-fidelity UI prototyping?",
+            "options": ["Figma", "Photoshop", "Excel", "Slack"],
+            "correctAnswer": 0,
+            "points": 10
+          }
+        ]
+      }
+    ],
+    "course-data": [
+      {
+        "_id": "vid-c1",
+        "videoTitle": "Series Intro — Pandas Basics",
+        "duration": 360,
+        "order": 0,
+        "filename": "course-video-1.mp4",
+        "thumbnailUrl": null,
+        "quizzes": [
+          {
+            "_id": "quiz-d1",
+            "question": "Which library is primarily used for tabular data analysis in Python?",
+            "options": ["pandas", "flask", "django", "requests"],
+            "correctAnswer": 0,
+            "points": 10
+          }
+        ]
+      }
+    ],
+    "course-marketing": []
+  },
+  "usersAnswers": {
+    "course-web-dev": [
+      {
+        "user": { "_id": "user-sarah", "name": "Sarah Demo" },
+        "averageScore": 8.5,
+        "answers": [
+          {
+            "_id": "ans-a1",
+            "quizSnapshot": { "question": "Which keyword declares a block-scoped variable in modern JavaScript?", "pointsPossible": 10 },
+            "firstShot": { "isCorrect": true, "selectedOption": 0, "duration": 12 },
+            "secondShot": null,
+            "totalPointsEarned": 10
+          },
+          {
+            "_id": "ans-a2",
+            "quizSnapshot": { "question": "What does typeof null evaluate to?", "pointsPossible": 10 },
+            "firstShot": { "isCorrect": false, "selectedOption": 1, "duration": 8 },
+            "secondShot": { "isCorrect": true, "selectedOption": 0, "duration": 5 },
+            "totalPointsEarned": 7
+          }
+        ]
+      },
+      {
+        "user": { "_id": "user-mike", "name": "Mike Johnson" },
+        "averageScore": 6.5,
+        "answers": [
+          {
+            "_id": "ans-a3",
+            "quizSnapshot": { "question": "Which method converts a JSON string into a JavaScript object?", "pointsPossible": 10 },
+            "firstShot": { "isCorrect": false, "selectedOption": 3, "duration": 15 },
+            "secondShot": { "isCorrect": true, "selectedOption": 0, "duration": 6 },
+            "totalPointsEarned": 6.5
+          }
+        ]
+      }
+    ],
+    "course-uiux": [],
+    "course-data": [
+      {
+        "user": { "_id": "user-sarah", "name": "Sarah Demo" },
+        "averageScore": 10,
+        "answers": [
+          {
+            "_id": "ans-c1",
+            "quizSnapshot": { "question": "Which library is primarily used for tabular data analysis in Python?", "pointsPossible": 10 },
+            "firstShot": { "isCorrect": true, "selectedOption": 0, "duration": 6 },
+            "secondShot": null,
+            "totalPointsEarned": 10
+          }
+        ]
+      }
+    ],
+    "course-marketing": []
+  }
+}

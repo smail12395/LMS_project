@@ -3,6 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Document, Page, pdfjs } from "react-pdf";
+import { isPreviewMode } from "../../services/dataMode";
+import { courses as previewCourses, videoSeries as previewVideoSeries, previewMutation } from "../../services/previewData";
 
 // ✅ REQUIRED CSS (fixes TextLayer warning)
 import "react-pdf/dist/esm/Page/TextLayer.css";
@@ -11,6 +13,28 @@ import "react-pdf/dist/esm/Page/AnnotationLayer.css";
 // ✅ Correct worker for Vite + react-pdf
 import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+
+const VIDEO_THUMBNAIL_FALLBACK =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="192" height="112" viewBox="0 0 192 112">
+      <rect width="192" height="112" fill="#4F46E5" />
+      <circle cx="96" cy="56" r="28" fill="#FFFFFF" fill-opacity="0.2" />
+      <path d="M84 40 L84 72 L112 56 Z" fill="#FFFFFF" />
+      <text x="96" y="94" font-family="sans-serif" font-size="14" fill="#FFFFFF" text-anchor="middle">Video</text>
+    </svg>
+  `);
+
+const buildVideoThumbnailUrl = () => null;
+
+// Attach the instructor JWT to a protected media URL (content images,
+// videos and PDFs are served through the authenticated /api/user/media route).
+const withToken = (url) => {
+  if (!url) return url;
+  const token = localStorage.getItem("token");
+  if (url.includes("?")) return `${url}&token=${encodeURIComponent(token || "")}`;
+  return `${url}?token=${encodeURIComponent(token || "")}`;
+};
 
 const CourseDetails = () => {
   const { courseId } = useParams();
@@ -50,10 +74,12 @@ const CourseDetails = () => {
   const fetchCourse = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/courses`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = isPreviewMode
+        ? await previewCourses()
+        : await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/instructor/courses`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
       const found = res.data.data.find(c => c._id === courseId);
       setCourse(found);
       setContents(found?.content || []);
@@ -68,12 +94,14 @@ const CourseDetails = () => {
   const fetchVideoSeries = async () => {
     try {
       setLoadingVideoSeries(true);
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const response = isPreviewMode
+        ? await previewVideoSeries(courseId)
+        : await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
 
       if (response.data.success) {
         setVideoSeries(response.data.videoSeries || []);
@@ -102,6 +130,11 @@ const CourseDetails = () => {
 
   const handleSave = async () => {
     try {
+      if (isPreviewMode) {
+        previewMutation("Updating course details");
+        setEditMode(false);
+        return;
+      }
       const res = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}`,
         {
@@ -129,6 +162,10 @@ const CourseDetails = () => {
     setContents(contents.filter((_, i) => i !== index));
 
     try {
+      if (isPreviewMode) {
+        previewMutation("Deleting content");
+        return;
+      }
       await axios.delete(
         `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/content/${index}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -168,6 +205,10 @@ const CourseDetails = () => {
     }
 
     try {
+      if (isPreviewMode) {
+        previewMutation("Adding content");
+        return;
+      }
       const formData = new FormData();
       formData.append("title", title);
       formData.append("contentType", contentType);
@@ -211,6 +252,11 @@ const CourseDetails = () => {
   // ===== NAVIGATE TO VIDEO SERIES =====
   const navigateToVideoSeries = () => {
     navigate(`/VideoSeries/${courseId}`);
+  };
+
+  // ===== NAVIGATE TO USERS ANSWERS =====
+  const navigateToUsersAnswers = () => {
+    navigate(`/UsersAnswers/${courseId}`);
   };
 
   if (loading) return <p className="p-6">Loading...</p>;
@@ -261,7 +307,7 @@ const CourseDetails = () => {
           </div>
 
           <img
-            src={course.imageCover}
+            src={course.imageCover || "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#E2E8F0"/><text x="300" y="210" font-size="30" text-anchor="middle" fill="#475569">Course Image</text></svg>`)}
             alt={course.name}
             className="w-full sm:w-40 h-28 object-cover rounded-lg shadow"
           />
@@ -290,15 +336,26 @@ const CourseDetails = () => {
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl shadow p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-800">Video Series</h2>
-          <button
-            onClick={navigateToVideoSeries}
-            className="text-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Manage Videos
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={navigateToUsersAnswers}
+              className="text-sm bg-white border border-gray-300 hover:border-indigo-300 text-gray-700 hover:text-indigo-600 px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Users Answers
+            </button>
+            <button
+              onClick={navigateToVideoSeries}
+              className="text-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg transition-all flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+              </svg>
+              Manage Videos
+            </button>
+          </div>
         </div>
 
         {loadingVideoSeries ? (
@@ -318,13 +375,15 @@ const CourseDetails = () => {
                 >
                   <div className="bg-white rounded-lg overflow-hidden shadow hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
                     <div className="relative h-28 bg-gradient-to-br from-blue-500 to-purple-600">
-                      {video.videoUrl ? (
+                      {video.filename ? (
                         <img
-                          src={`${video.videoUrl.replace(/\.(mp4|mov|avi|mkv)$/i, '.jpg')}`}
+                          src={buildVideoThumbnailUrl() || VIDEO_THUMBNAIL_FALLBACK}
                           alt={video.videoTitle}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.target.src = "https://via.placeholder.com/192x112/4F46E5/FFFFFF?text=Video";
+                            if (e.target.dataset.fallbackApplied) return;
+                            e.target.dataset.fallbackApplied = "true";
+                            e.target.src = VIDEO_THUMBNAIL_FALLBACK;
                           }}
                         />
                       ) : (
@@ -481,7 +540,7 @@ const CourseDetails = () => {
               {c.contentType === "image" && (
                 <div className="mt-2">
                   <img
-                    src={c.contentData}
+                    src={withToken(c.contentData)}
                     alt={c.title}
                     className="rounded-lg max-w-full h-auto max-h-96 object-contain"
                   />
@@ -491,7 +550,7 @@ const CourseDetails = () => {
                 <div className="mt-2">
                   <video
                     controls
-                    src={c.contentData}
+                    src={withToken(c.contentData)}
                     className="w-full rounded-lg max-h-96"
                   />
                 </div>
@@ -499,7 +558,7 @@ const CourseDetails = () => {
               {c.contentType === "pdf" && (
                 <button
                   onClick={() => {
-                    setPdfUrl(c.contentData);
+                    setPdfUrl(withToken(c.contentData));
                     setPageNumber(1);
                   }}
                   className="mt-2 text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-2"
