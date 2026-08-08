@@ -10,6 +10,9 @@ const Navbar = () => {
   const [role, setRole] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Re-read the auth state on every navigation so the menu reflects the
+  // current role immediately after login/logout, without a full page refresh.
+  // This keeps instructor vs admin items correct in both DB and Preview mode.
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedRole = localStorage.getItem("role");
@@ -17,7 +20,7 @@ const Navbar = () => {
     setToken(storedToken);
     setRole(storedRole);
     setLoading(false);
-  }, []);
+  }, [location.pathname]);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -79,9 +82,6 @@ const Navbar = () => {
               </Link>
             ) : isAdmin ? (
               <>
-                <Link to="/ManageInstructors" className={isActive("/ManageInstructors")}>
-                  Dashboard
-                </Link>
                 <Link to="/ManageInstructors" className={isActive("/ManageInstructors")}>
                   Manage Instructors
                 </Link>
@@ -151,13 +151,6 @@ const Navbar = () => {
               </Link>
             ) : isAdmin ? (
               <>
-                <Link
-                  to="/ManageInstructors"
-                  onClick={() => setMenuOpen(false)}
-                  className="text-slate-600 hover:text-emerald-600"
-                >
-                  Dashboard
-                </Link>
                 <Link
                   to="/ManageInstructors"
                   onClick={() => setMenuOpen(false)}
