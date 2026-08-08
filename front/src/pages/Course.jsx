@@ -6,7 +6,7 @@
 // streamVideo/streamContentVideo, so the exact same stream URLs this file
 // already builds now transparently come back watermarked. Delivered
 // unchanged, byte-for-byte identical to what you pasted, so you have the
-// full "safe" set together in one place.
+// full "safe" set together in one place
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -348,7 +348,7 @@ const handlePlayContentVideo = async (contentItem) => {
   // In preview mode the local /preview-data video file is used directly.
   const buildVideoStreamUrl = (video) => {
     if (isPreviewMode) {
-      return `/preview-data/storage/videos/${video.filename}`;
+      return `public/preview-data/storage/videos/${video.filename}`;
     }
     const token = localStorage.getItem('token');
     const timestamp = Date.now();
