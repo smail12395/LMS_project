@@ -11,16 +11,19 @@ const ManageInstructors = () => {
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // "add" or "edit"
+  const [modalMode, setModalMode] = useState("add");
   const [currentInstructor, setCurrentInstructor] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     speciality: "",
-    stripePublicKey: "",
-    stripeSecretKey: "",
+    monthlyPrice: "",
+    studentLimit: "",
   });
+
+  const [limitOverride, setLimitOverride] = useState({});
+  const [priceOverride, setPriceOverride] = useState({});
 
   const token = localStorage.getItem("token");
 
@@ -46,18 +49,10 @@ const ManageInstructors = () => {
 
   useEffect(() => {
     fetchInstructors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      email: "",
-      password: "",
-      speciality: "",
-      stripePublicKey: "",
-      stripeSecretKey: "",
-    });
+    setFormData({ name: "", email: "", password: "", speciality: "", monthlyPrice: "", studentLimit: "" });
   };
 
   const openAddModal = () => {
@@ -75,8 +70,8 @@ const ManageInstructors = () => {
       email: inst.email || "",
       password: "",
       speciality: inst.speciality || "",
-      stripePublicKey: inst.stripePublicKey || "",
-      stripeSecretKey: inst.stripeSecretKey || "",
+      monthlyPrice: inst.monthlyPrice != null ? String(inst.monthlyPrice) : "",
+      studentLimit: inst.studentLimit != null ? String(inst.studentLimit) : "",
     });
     setShowModal(true);
   };
@@ -89,10 +84,15 @@ const ManageInstructors = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = { ...formData };
-    // Remove password if empty (for edit mode)
     if (!payload.password) delete payload.password;
+    if (modalMode === "add") {
+      if (payload.monthlyPrice === "" || payload.monthlyPrice === null) delete payload.monthlyPrice;
+      if (payload.studentLimit === "" || payload.studentLimit === null) delete payload.studentLimit;
+    } else {
+      delete payload.monthlyPrice;
+      delete payload.studentLimit;
+    }
 
     try {
       if (isPreviewMode) {
@@ -145,6 +145,42 @@ const ManageInstructors = () => {
     }
   };
 
+  const handleUpdateStudentLimit = async (instId, value) => {
+    try {
+      const val = value === "" ? null : Number(value);
+      const res = await axios.put(
+        `${BACKEND_URL}/api/admin/instructors/${instId}/student-limit`,
+        { studentLimit: val },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        toast.success("Student limit updated");
+        setLimitOverride((prev) => ({ ...prev, [instId]: value }));
+        fetchInstructors();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update student limit");
+    }
+  };
+
+  const handleUpdateMonthlyPrice = async (instId, value) => {
+    try {
+      const val = value === "" ? null : Number(value);
+      const res = await axios.put(
+        `${BACKEND_URL}/api/admin/instructors/${instId}/monthly-price`,
+        { monthlyPrice: val },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.success) {
+        toast.success("Monthly price updated");
+        setPriceOverride((prev) => ({ ...prev, [instId]: value }));
+        fetchInstructors();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to update monthly price");
+    }
+  };
+
   return (
     <div className="p-6 min-h-screen bg-gray-50">
       <ToastContainer />
@@ -170,8 +206,9 @@ const ManageInstructors = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Speciality</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Courses</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Students</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Price</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Subscription</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
@@ -180,8 +217,51 @@ const ManageInstructors = () => {
                 <tr key={inst._id}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{inst.name}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{inst.email}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{inst.speciality}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{inst.courses?.length || 0}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`font-medium ${inst.studentLimit && inst.liveStudentCount >= inst.studentLimit ? 'text-red-600' : 'text-gray-800'}`}>
+                      {inst.liveStudentCount || 0}
+                    </span>
+                    {inst.studentLimit != null && (
+                      <span className="text-gray-400"> / {inst.studentLimit}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-800 font-medium">
+                        ${inst.monthlyPrice != null ? inst.monthlyPrice : "default"}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Override"
+                        value={priceOverride[inst._id] ?? ""}
+                        onChange={(e) => setPriceOverride((prev) => ({ ...prev, [inst._id]: e.target.value }))}
+                        onBlur={() => {
+                          if (priceOverride[inst._id] !== undefined) {
+                            handleUpdateMonthlyPrice(inst._id, priceOverride[inst._id]);
+                          }
+                        }}
+                        className="w-24 border border-gray-300 rounded px-2 py-1 text-xs"
+                      />
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      inst.subscriptionStatus === "active"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : inst.subscriptionStatus === "past_due"
+                        ? "bg-rose-100 text-rose-700"
+                        : inst.subscriptionStatus === "grace"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-slate-100 text-slate-600"
+                    }`}>
+                      {inst.subscriptionStatus || "inactive"}
+                    </span>
+                    {inst.stripeSubscriptionId && (
+                      <span className="block text-[10px] text-slate-400 font-mono mt-0.5">{inst.stripeSubscriptionId}</span>
+                    )}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap space-x-2">
                     <button
                       onClick={() => openEditModal(inst)}
@@ -203,23 +283,20 @@ const ManageInstructors = () => {
         </div>
       )}
 
-      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">
               {modalMode === "add" ? "Add Instructor" : "Edit Instructor"}
             </h2>
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {[
                 { field: "name", label: "Name", type: "text", required: true },
                 { field: "email", label: "Email", type: "email", required: true },
                 { field: "password", label: "Password (leave blank to keep)", type: "password", required: modalMode === "add" },
                 { field: "speciality", label: "Speciality", type: "text", required: true },
-                { field: "stripePublicKey", label: "Stripe Public Key", type: "text", required: true, className: "md:col-span-2" },
-                { field: "stripeSecretKey", label: "Stripe Secret Key", type: "password", required: true, className: "md:col-span-2" },
               ].map((cfg) => (
-                <div key={cfg.field} className={cfg.className || ""}>
+                <div key={cfg.field}>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{cfg.label}</label>
                   <input
                     type={cfg.type}
@@ -232,7 +309,44 @@ const ManageInstructors = () => {
                 </div>
               ))}
 
-              <div className="md:col-span-2 flex justify-end space-x-3 pt-4">
+              {modalMode === "add" && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Monthly Price ($)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.monthlyPrice}
+                        onChange={(e) => setFormData({ ...formData, monthlyPrice: e.target.value })}
+                        placeholder="Default: 7"
+                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Leave empty to use platform default</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Student Limit
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        value={formData.studentLimit}
+                        onChange={(e) => setFormData({ ...formData, studentLimit: e.target.value })}
+                        placeholder="Default: 5"
+                        className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Leave empty to use platform default</p>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={closeModal}

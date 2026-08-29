@@ -21,11 +21,17 @@ import {
   ChartBarIcon,
   PlusIcon,
   ArrowRightIcon,
+  CreditCardIcon,
+  LockClosedIcon,
 } from "@heroicons/react/24/outline";
 import CourseCard from "../../components/instructor/CourseCard";
 import { formatMoney } from "../../components/instructor/courseUtils";
 import { isPreviewMode } from "../../services/dataMode";
-import { courses as previewCourses, previewMutation } from "../../services/previewData";
+import useInstructorLock from "../../hooks/useInstructorLock";
+import {
+  courses as previewCourses,
+  previewMutation,
+} from "../../services/previewData";
 
 const DONUT_PALETTE = ["#059669", "#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5", "#cbd5e1", "#94a3b8"];
 
@@ -76,8 +82,30 @@ const DashInstructor = () => {
   const [deletingId, setDeletingId] = useState(null);
   const [metric, setMetric] = useState("users");
 
+  const [subscription, setSubscription] = useState(null);
+  const [subLoading, setSubLoading] = useState(true);
+  const [paymentSettings, setPaymentSettings] = useState(null);
+
+  const { locked: instructorLocked } = useInstructorLock();
+
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
+
+  const fetchSubscription = async () => {
+    try {
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/subscription/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) {
+        setSubscription(data.data);
+      }
+    } catch (error) {
+      console.error("Fetch subscription status error:", error.message);
+    } finally {
+      setSubLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!token || role !== "instructor") {
@@ -87,7 +115,21 @@ const DashInstructor = () => {
     }
 
     fetchCourses();
+    fetchSubscription();
+    fetchPaymentSettings();
   }, []);
+
+  const fetchPaymentSettings = async () => {
+    try {
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/payment-settings/status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (data.success) setPaymentSettings(data.data);
+    } catch (error) {
+      console.error("Fetch payment settings error:", error.message);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -165,7 +207,6 @@ const DashInstructor = () => {
   const revenueData = useMemo(() => buildRevenueData(courses), [courses]);
   const totalRevenue = stats.totalEarnings;
 
-  // ===== Chart tooltips =====
   const renderChartTooltip = ({ active, payload }) => {
     if (!active || !payload || !payload.length) return null;
     const { label, value } = payload[0].payload;
@@ -234,13 +275,100 @@ const DashInstructor = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate("/AddCource")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            onClick={() => instructorLocked ? navigate("/payInstructor") : navigate("/AddCource")}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              instructorLocked
+                ? "bg-slate-100 text-slate-500 hover:bg-slate-200 focus:ring-slate-400"
+                : "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500"
+            }`}
           >
-            <PlusIcon className="h-5 w-5" />
-            New Course
+            {instructorLocked ? <LockClosedIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
+            {instructorLocked ? "Instructor Plan Required" : "New Course"}
           </button>
         </div>
+
+        {/* Subscription Status */}
+        {subscription && (
+          <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                  subscription.subscriptionStatus === "active"
+                    ? "bg-emerald-600 text-white"
+                    : subscription.subscriptionStatus === "past_due" || subscription.subscriptionStatus === "grace"
+                    ? "bg-amber-500 text-white"
+                    : "bg-slate-400 text-white"
+                }`}>
+                  <CurrencyDollarIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Instructor Plan</h2>
+                  <div className="mt-1 flex items-center gap-3 flex-wrap">
+                    <span className="text-sm font-semibold text-emerald-600">
+                      ${subscription.monthlyPrice}/mo
+                    </span>
+                    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                      subscription.subscriptionStatus === "active"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : subscription.subscriptionStatus === "past_due"
+                        ? "border-rose-200 bg-rose-50 text-rose-700"
+                        : "border-slate-200 bg-slate-100 text-slate-600"
+                    }`}>
+                      <span className={`h-2 w-2 rounded-full ${
+                        subscription.subscriptionStatus === "active" ? "bg-emerald-500"
+                        : subscription.subscriptionStatus === "past_due" ? "bg-rose-500"
+                        : "bg-slate-400"
+                      }`} />
+                      {subLoading ? "Loading…" : subscription.subscriptionStatus}
+                    </span>
+                    <span className="text-sm text-slate-500">
+                      {subscription.studentCount}/{subscription.studentLimit} students
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => navigate("/payInstructor")}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                >
+                  {subscription.subscriptionStatus === "active" ? "Manage Subscription" : "Activate Plan"}
+                </button>
+              </div>
+            </div>
+            {subscription.subscriptionStatus === "past_due" && (
+              <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-700">
+                Your subscription payment failed. Update your payment method to avoid losing access.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Payment Settings Status */}
+        {paymentSettings && !paymentSettings.configured && (
+          <div className="mb-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white">
+                  <CreditCardIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-slate-900">Stripe Payment Setup Required</h2>
+                  <p className="mt-1 text-sm text-slate-600">
+                    You need to configure your Stripe credentials before students can purchase your courses.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/paymentSettings")}
+                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+              >
+                <CreditCardIcon className="h-4 w-4" />
+                Configure Stripe Payment
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ===== KPI Cards ===== */}
         <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
@@ -452,11 +580,15 @@ const DashInstructor = () => {
               Create your first course to start building your catalog and earning revenue.
             </p>
             <button
-              onClick={() => navigate("/AddCource")}
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              onClick={() => instructorLocked ? navigate("/payInstructor") : navigate("/AddCource")}
+              className={`mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
+                instructorLocked
+                  ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }`}
             >
-              <PlusIcon className="h-5 w-5" />
-              Create your first course
+              {instructorLocked ? <LockClosedIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
+              {instructorLocked ? "Instructor Plan Required" : "Create your first course"}
             </button>
           </div>
         ) : (

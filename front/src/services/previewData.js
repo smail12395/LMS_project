@@ -62,6 +62,11 @@ export const paymentIntent = async (courseId) => {
   return { data: { success: true, clientSecret: 'pi_preview_simulated_client_secret' } };
 };
 
+// POST /api/user/payments/create-checkout-session (simulated)
+export const courseCheckoutSession = async (courseId) => {
+  return { data: { success: true, checkoutUrl: '#preview-checkout' } };
+};
+
 // Any mutation while in preview mode: show a hint and do nothing.
 export const previewMutation = (action) => {
   toast.info(`Preview Mode — ${action} is simulated (no backend call, nothing saved).`);

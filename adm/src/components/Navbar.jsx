@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
+import useInstructorLock from "../hooks/useInstructorLock";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -9,6 +11,8 @@ const Navbar = () => {
   const [token, setToken] = useState(null);
   const [role, setRole] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const { locked: instructorLocked } = useInstructorLock();
 
   // Re-read the auth state on every navigation so the menu reflects the
   // current role immediately after login/logout, without a full page refresh.
@@ -85,6 +89,9 @@ const Navbar = () => {
                 <Link to="/ManageInstructors" className={isActive("/ManageInstructors")}>
                   Manage Instructors
                 </Link>
+                <Link to="/PlatformSettings" className={isActive("/PlatformSettings")}>
+                  Platform Settings
+                </Link>
                 <button
                   onClick={logout}
                   className="ml-4 bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-lg transition"
@@ -97,7 +104,15 @@ const Navbar = () => {
                 <Link to="/" className={isActive("/")}>
                   Dashboard
                 </Link>
-                <Link to="/AddCource" className={isActive("/AddCource")}>
+                <Link
+                  to={instructorLocked ? "/payInstructor" : "/AddCource"}
+                  className={
+                    instructorLocked
+                      ? "text-slate-400 hover:text-slate-500 inline-flex items-center gap-1"
+                      : isActive("/AddCource")
+                  }
+                >
+                  {instructorLocked && <LockClosedIcon className="h-3.5 w-3.5" />}
                   Add Course
                 </Link>
                 <Link to="/AllCources" className={isActive("/AllCources")}>
@@ -158,6 +173,13 @@ const Navbar = () => {
                 >
                   Manage Instructors
                 </Link>
+                <Link
+                  to="/PlatformSettings"
+                  onClick={() => setMenuOpen(false)}
+                  className="text-slate-600 hover:text-emerald-600"
+                >
+                  Platform Settings
+                </Link>
                 <button
                   onClick={logout}
                   className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-left"
@@ -175,10 +197,15 @@ const Navbar = () => {
                   Dashboard
                 </Link>
                 <Link
-                  to="/AddCource"
+                  to={instructorLocked ? "/payInstructor" : "/AddCource"}
                   onClick={() => setMenuOpen(false)}
-                  className="text-slate-600 hover:text-emerald-600"
+                  className={
+                    instructorLocked
+                      ? "text-slate-400 hover:text-slate-500 inline-flex items-center gap-1"
+                      : "text-slate-600 hover:text-emerald-600"
+                  }
                 >
+                  {instructorLocked && <LockClosedIcon className="h-3.5 w-3.5" />}
                   Add Course
                 </Link>
                 <Link

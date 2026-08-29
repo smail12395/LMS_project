@@ -1,9 +1,11 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { LockClosedIcon } from "@heroicons/react/24/outline";
 import { isPreviewMode } from "../../services/dataMode";
 import { videoSeries as previewVideoSeries, previewMutation } from "../../services/previewData";
+import useInstructorLock from "../../hooks/useInstructorLock";
 
 // Local, network-free fallback thumbnail. This avoids the retry loop
 // caused by repeatedly re-requesting a failing remote image URL.
@@ -27,7 +29,10 @@ const deriveThumbnailUrl = (video) => {
 
 const VideoSeries = () => {
   const { courseId } = useParams();
+  const navigate = useNavigate();
   const token = localStorage.getItem("token");
+
+  const { locked: instructorLocked } = useInstructorLock();
 
   /* ===================== EXISTING VIDEOS ===================== */
   const [existingVideos, setExistingVideos] = useState([]);
@@ -38,6 +43,15 @@ const VideoSeries = () => {
   const [videoCount, setVideoCount] = useState(1);
   const [videos, setVideos] = useState([]);
   const [saving, setSaving] = useState(false);
+
+  /* ===================== UPLOAD PROGRESS (per video) ===================== */
+  // uploadStatus[index] = { status: 'uploading' | 'done' | 'failed', percent, loaded, total, error }
+  const [uploadStatus, setUploadStatus] = useState({});
+
+  const formatBytes = (bytes) => {
+    if (!bytes && bytes !== 0) return "";
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   /* ===================== QUIZ MODAL ===================== */
   const [showQuizModal, setShowQuizModal] = useState(false);
@@ -243,6 +257,102 @@ const VideoSeries = () => {
   };
 
   /* ===================== SAVE ALL VIDEOS ===================== */
+  /* ===================== UPLOAD ONE VIDEO ===================== */
+  const uploadSingleVideo = async (index, video) => {
+    const formData = new FormData();
+    formData.append("videos", video.file);
+
+    // Stringify metadata (same contract as before; order is used by the
+    // backend only as a fallback — it appends videos in upload order).
+    const metadata = {
+      videoTitle: video.title,
+      quizzes: video.quizzes || [],
+      order: existingVideos.length + index,
+    };
+    formData.append("meta", JSON.stringify(metadata));
+
+    const response = await axios.post(
+      `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+        onUploadProgress: (event) => {
+          const percent = event.total
+            ? Math.min(100, Math.round((event.loaded / event.total) * 100))
+            : 0;
+          setUploadStatus((prev) => ({
+            ...prev,
+            [index]: {
+              status: "uploading",
+              percent,
+              loaded: event.loaded,
+              total: event.total,
+            },
+          }));
+        },
+      }
+    );
+
+    return response.data;
+  };
+
+  /* ===================== RETRY A FAILED VIDEO ===================== */
+  const retryVideo = async (index) => {
+    const video = videos[index];
+    if (!video) return;
+
+    setUploadStatus((prev) => ({
+      ...prev,
+      [index]: { status: "uploading", percent: 0, loaded: 0, total: video.file.size },
+    }));
+
+    try {
+      const data = await uploadSingleVideo(index, video);
+      if (data.success) {
+        setUploadStatus((prev) => ({
+          ...prev,
+          [index]: { status: "done", percent: 100, loaded: video.file.size, total: video.file.size },
+        }));
+        toast.success(`"${video.title}" uploaded successfully!`);
+        await refreshExistingVideos();
+      } else {
+        throw new Error(data.message || "Upload failed");
+      }
+    } catch (err) {
+      console.error("Retry upload error:", err);
+      setUploadStatus((prev) => ({
+        ...prev,
+        [index]: {
+          status: "failed",
+          percent: 0,
+          error: err.response?.data?.message || err.message || "Upload failed",
+        },
+      }));
+    }
+  };
+
+  /* ===================== REFRESH EXISTING VIDEOS ===================== */
+  const refreshExistingVideos = async () => {
+    setLoadingExisting(true);
+    try {
+      const res = isPreviewMode
+        ? await previewVideoSeries(courseId)
+        : await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+      setExistingVideos(res.data.videoSeries || []);
+    } catch (err) {
+      console.error("Refresh videos error:", err);
+    } finally {
+      setLoadingExisting(false);
+    }
+  };
+
+  /* ===================== SAVE ALL VIDEOS ===================== */
   const saveAllVideos = async () => {
     // Validate all videos
     for (let i = 0; i < videos.length; i++) {
@@ -268,54 +378,66 @@ const VideoSeries = () => {
         previewMutation("Uploading videos");
         setVideoCount(1);
         setVideos([]);
+        setUploadStatus({});
         toast.success("Videos uploaded successfully! (preview)");
         return;
       }
 
-      const formData = new FormData();
-      const existingCount = existingVideos.length;
-      
-      // Add videos and metadata
-      videos.forEach((video, index) => {
-        formData.append("videos", video.file);
-        
-        // Stringify metadata with correct order (existing count + index)
-        const metadata = {
-          videoTitle: video.title,
-          quizzes: video.quizzes || [],
-          order: existingCount + index
-        };
-        formData.append("meta", JSON.stringify(metadata));
-      });
+      // Videos are uploaded one per request so each file gets its own progress
+      // bar and a failed upload can be retried without re-uploading the rest.
+      // Already-completed videos (from a previous Retry) are skipped.
+      let uploadedCount = 0;
+      const failures = [];
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+      for (let i = 0; i < videos.length; i++) {
+        const video = videos[i];
+        if (uploadStatus[i]?.status === "done") continue;
+
+        setUploadStatus((prev) => ({
+          ...prev,
+          [i]: { status: "uploading", percent: 0, loaded: 0, total: video.file.size },
+        }));
+
+        try {
+          const data = await uploadSingleVideo(i, video);
+          if (data.success) {
+            uploadedCount += 1;
+            setUploadStatus((prev) => ({
+              ...prev,
+              [i]: { status: "done", percent: 100, loaded: video.file.size, total: video.file.size },
+            }));
+          } else {
+            throw new Error(data.message || "Upload failed");
           }
+        } catch (err) {
+          console.error("Upload error:", err);
+          failures.push(i);
+          setUploadStatus((prev) => ({
+            ...prev,
+            [i]: {
+              status: "failed",
+              percent: 0,
+              error: err.response?.data?.message || err.message || "Upload failed",
+            },
+          }));
         }
-      );
+      }
 
-      if (response.data.success) {
-        toast.success(`${response.data.uploaded} videos uploaded successfully!`);
-        
-        // Reset form
+      // Refresh so newly uploaded videos appear in the list.
+      await refreshExistingVideos();
+
+      if (uploadedCount > 0) {
+        toast.success(`${uploadedCount} video${uploadedCount > 1 ? "s" : ""} uploaded successfully!`);
+      }
+      if (failures.length > 0) {
+        toast.error(`${failures.length} video${failures.length > 1 ? "s" : ""} failed. Use Retry to upload them again.`);
+      }
+
+      // Only reset the form when every video made it.
+      if (failures.length === 0 && uploadedCount === videos.length) {
         setVideoCount(1);
         setVideos([]);
-        
-        // Refresh existing videos
-        setLoadingExisting(true);
-        const refreshed = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series`,
-          { 
-            headers: { Authorization: `Bearer ${token}` } 
-          }
-        );
-        setExistingVideos(refreshed.data.videoSeries || []);
-        setLoadingExisting(false);
+        setUploadStatus({});
       }
     } catch (err) {
       console.error("Upload error:", err);
@@ -658,7 +780,22 @@ const VideoSeries = () => {
       </section>
 
       {/* Add New Videos Section */}
-      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 mb-8">
+      <section className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 mb-8 relative">
+        {instructorLocked && (
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-[1px] rounded-2xl z-10 flex flex-col items-center justify-center gap-3">
+            <LockClosedIcon className="h-10 w-10 text-slate-400" />
+            <p className="text-sm font-semibold text-slate-700">Instructor Plan Required</p>
+            <p className="text-xs text-slate-500 text-center max-w-xs">
+              You have reached your student limit. Activate your monthly instructor plan to continue creating and managing content.
+            </p>
+            <button
+              onClick={() => navigate("/payInstructor")}
+              className="mt-1 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+            >
+              Activate Plan
+            </button>
+          </div>
+        )}
         <h2 className="text-3xl font-bold text-slate-900 mb-6">Add New Video Series</h2>
         
         {/* Video Count Selector */}
@@ -764,6 +901,80 @@ const VideoSeries = () => {
             </div>
           ))}
         </div>
+
+        {/* Upload Progress */}
+        {Object.keys(uploadStatus).length > 0 && (
+          <section className="mb-8">
+            <h3 className="text-lg font-semibold text-slate-900 mb-3">Upload Progress</h3>
+            <div className="space-y-4">
+              {videos.map((video, index) => {
+                const status = uploadStatus[index];
+                if (!status) return null;
+                const filename = video.file?.name || "video file";
+
+                return (
+                  <div key={index} className="border border-slate-200 rounded-lg p-4 bg-slate-50/50">
+                    <div className="flex items-center justify-between mb-2 gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-slate-700 text-sm whitespace-nowrap">
+                          Video {index + 1}
+                        </span>
+                        <span className="text-slate-500 text-sm truncate">{filename}</span>
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 whitespace-nowrap">
+                        {status.status === "done"
+                          ? "100%"
+                          : status.status === "failed"
+                          ? "—"
+                          : `${status.percent || 0}%`}
+                      </span>
+                    </div>
+
+                    <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden mb-1.5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          status.status === "failed"
+                            ? "bg-red-500"
+                            : status.status === "done"
+                            ? "bg-emerald-500"
+                            : "bg-gradient-to-r from-green-500 to-emerald-600"
+                        }`}
+                        style={{ width: `${status.percent || 0}%` }}
+                      ></div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">
+                        {status.status === "uploading" && status.total
+                          ? `${formatBytes(status.loaded)} / ${formatBytes(status.total)}`
+                          : status.status === "done"
+                          ? formatBytes(status.total || video.file?.size)
+                          : " "}
+                      </span>
+                      {status.status === "uploading" && (
+                        <span className="text-emerald-600 font-medium">Uploading...</span>
+                      )}
+                      {status.status === "done" && (
+                        <span className="text-emerald-600 font-medium">Upload complete</span>
+                      )}
+                      {status.status === "failed" && (
+                        <span className="flex items-center gap-2">
+                          <span className="text-red-600 font-medium">Upload failed</span>
+                          <button
+                            onClick={() => retryVideo(index)}
+                            className="px-2.5 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-medium hover:bg-red-100 transition-colors"
+                          >
+                            Retry
+                          </button>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Save Button */}
         <div className="flex justify-end">

@@ -324,11 +324,12 @@ const AddCourse = () => {
                   </span>
                   <span>
                     <span className="block text-sm font-semibold text-slate-800">
-                      Free course — make all content publicly accessible
+                      Free course — students enroll and access all content for free
                     </span>
                     <span className="mt-0.5 block text-xs text-slate-500">
-                      When enabled, content items marked "free" are available to all users without
-                      enrollment.
+                      When enabled, all content (text, images, PDFs, videos, video
+                      series, quizzes) is treated as free. Students enroll without
+                      payment.
                     </span>
                   </span>
                 </label>

@@ -51,6 +51,36 @@
   .eyebrow {
     @apply inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700;
   }
+
+  /* --- Custom video player controls --- */
+  .vc-btn {
+    @apply inline-flex items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-white/90 transition-colors duration-150 hover:text-white focus:outline-none;
+  }
+  .vc-btn-ghost {
+    @apply hover:bg-white/10 active:scale-95;
+  }
+  .vc-slider {
+    @apply appearance-none h-1.5 rounded-full bg-white/25 cursor-pointer outline-none transition-colors;
+  }
+  .vc-slider::-webkit-slider-thumb {
+    @apply appearance-none w-3.5 h-3.5 rounded-full bg-emerald-400 border-none shadow-md;
+  }
+  .vc-slider::-moz-range-thumb {
+    @apply w-3.5 h-3.5 rounded-full bg-emerald-400 border-none shadow-md;
+  }
+  .vc-slider::-moz-range-track {
+    @apply rounded-full bg-white/25;
+  }
+  .vc-grid-opacity-show {
+    @apply opacity-0 hover:opacity-100 focus-within:opacity-100;
+  }
+}
+
+:fullscreen {
+  @apply bg-black;
+}
+:fullscreen .vc-plain {
+  background: black;
 }
 
 @layer utilities {

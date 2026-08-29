@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { PlusIcon, MagnifyingGlassIcon, BookOpenIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, MagnifyingGlassIcon, BookOpenIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import CourseCard from "../../components/instructor/CourseCard";
 import { isPreviewMode } from "../../services/dataMode";
+import useInstructorLock from "../../hooks/useInstructorLock";
 import { courses as previewCourses } from "../../services/previewData";
 
 const AllCources = () => {
@@ -13,6 +14,8 @@ const AllCources = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  const { locked: instructorLocked } = useInstructorLock();
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
@@ -92,11 +95,15 @@ const AllCources = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate("/AddCource")}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            onClick={() => instructorLocked ? navigate("/payInstructor") : navigate("/AddCource")}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              instructorLocked
+                ? "bg-slate-100 text-slate-500 hover:bg-slate-200 focus:ring-slate-400"
+                : "bg-emerald-600 text-white hover:bg-emerald-700 focus:ring-emerald-500"
+            }`}
           >
-            <PlusIcon className="h-5 w-5" />
-            Add Course
+            {instructorLocked ? <LockClosedIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
+            {instructorLocked ? "Instructor Plan Required" : "Add Course"}
           </button>
         </div>
 
@@ -127,11 +134,15 @@ const AllCources = () => {
               You haven't created any courses yet. Start building your first course now.
             </p>
             <button
-              onClick={() => navigate("/AddCource")}
-              className="mt-6 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+              onClick={() => instructorLocked ? navigate("/payInstructor") : navigate("/AddCource")}
+              className={`mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold shadow-sm transition-colors ${
+                instructorLocked
+                  ? "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }`}
             >
-              <PlusIcon className="h-5 w-5" />
-              Create your first course
+              {instructorLocked ? <LockClosedIcon className="h-5 w-5" /> : <PlusIcon className="h-5 w-5" />}
+              {instructorLocked ? "Instructor Plan Required" : "Create your first course"}
             </button>
           </div>
         ) : filteredCourses.length === 0 ? (

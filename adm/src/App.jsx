@@ -6,11 +6,14 @@ import Login from './pages/Login';
 import AddCource from './pages/instructor/AddCource';
 import AllCources from './pages/instructor/AllCources';
 import DashInstructor from './pages/instructor/DashInstructor';
+import PayInstructor from './pages/instructor/PayInstructor';
+import PaymentSettings from './pages/instructor/PaymentSettings';
 import CourseDetails from './pages/instructor/CourseDetails';
 import Navbar from './components/Navbar';
 import VideoSeries from './pages/instructor/VideoSeries';
 import UsersAnswers from './pages/instructor/UsersAnswers';
 import ManageInstructors from './pages/admin/ManageInstructors';
+import PlatformSettings from './pages/admin/PlatformSettings';
 import { isPreviewMode } from './services/dataMode';
 
 const App = () => {
@@ -30,10 +33,13 @@ const App = () => {
           <Route path="/AddCource" element={<AddCource />} />
           <Route path="/AllCources" element={<AllCources />} />
           <Route path="/" element={<DashInstructor />} />
+          <Route path="/payInstructor" element={<PayInstructor />} />
+          <Route path="/paymentSettings" element={<PaymentSettings />} />
           <Route path="/AllCources/:courseId" element={<CourseDetails />} />
           <Route path="/VideoSeries/:courseId" element={<VideoSeries />} />
           <Route path="/UsersAnswers/:courseId" element={<UsersAnswers />} />
           <Route path="/ManageInstructors" element={<ManageInstructors />} />
+          <Route path="/PlatformSettings" element={<PlatformSettings />} />
         </Routes>
       </div>
     </>
