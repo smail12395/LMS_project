@@ -90,9 +90,20 @@ const ManageInstructors = () => {
       if (payload.monthlyPrice === "" || payload.monthlyPrice === null) delete payload.monthlyPrice;
       if (payload.studentLimit === "" || payload.studentLimit === null) delete payload.studentLimit;
     } else {
+      // The identity endpoint doesn't handle pricing fields; they are persisted
+      // separately via the dedicated /monthly-price and /student-limit endpoints.
       delete payload.monthlyPrice;
       delete payload.studentLimit;
     }
+
+    // Empty (or null) price/limit == inherit the platform default. Convert the
+    // form values to numbers for the dedicated endpoints; empty string -> null.
+    const monthlyPrice = formData.monthlyPrice === "" || formData.monthlyPrice == null
+      ? null
+      : Number(formData.monthlyPrice);
+    const studentLimit = formData.studentLimit === "" || formData.studentLimit == null
+      ? null
+      : Math.floor(Number(formData.studentLimit));
 
     try {
       if (isPreviewMode) {
@@ -113,6 +124,19 @@ const ManageInstructors = () => {
       }
 
       if (res.data.success) {
+        // Persist the instructor's pricing overrides (edit mode only). These use
+        // the existing dedicated endpoints whose backend ``null`` clearing makes
+        // the instructor inherit the current platform default immediately.
+        if (modalMode === "edit") {
+          await Promise.all([
+            axios.put(`${BACKEND_URL}/api/admin/instructors/${currentInstructor._id}/monthly-price`, { monthlyPrice }, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+            axios.put(`${BACKEND_URL}/api/admin/instructors/${currentInstructor._id}/student-limit`, { studentLimit }, {
+              headers: { Authorization: `Bearer ${token}` },
+            }),
+          ]);
+        }
         toast.success(modalMode === "add" ? "Instructor added" : "Instructor updated");
         closeModal();
         fetchInstructors();
@@ -309,8 +333,7 @@ const ManageInstructors = () => {
                 </div>
               ))}
 
-              {modalMode === "add" && (
-                <>
+              {modalMode === "add" || modalMode === "edit" ? (
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -343,8 +366,7 @@ const ManageInstructors = () => {
                       <p className="text-xs text-gray-400 mt-1">Leave empty to use platform default</p>
                     </div>
                   </div>
-                </>
-              )}
+              ) : null}
 
               <div className="flex justify-end space-x-3 pt-4">
                 <button

@@ -3,8 +3,10 @@
 
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { isPreviewMode } from '../services/dataMode';
 import { profile as previewProfile } from '../services/previewData';
+import { useTour } from '../hooks/useTour';
 
 // Icon Components (Heroicons)
 const MailIcon = () => (
@@ -33,6 +35,7 @@ const ShieldCheckIcon = ({ className }) => (
 
 
 const MyProfile = () => {
+  const { t } = useTranslation();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -45,7 +48,7 @@ const MyProfile = () => {
         
         const token = localStorage.getItem('token');
         if (!token && !isPreviewMode) {
-          throw new Error("No authentication token found. Please log in.");
+          throw new Error(t('myProfile.noToken'));
         }
 
         const response = isPreviewMode
@@ -62,10 +65,10 @@ const MyProfile = () => {
         if (response.data.success) {
           setUserData(response.data.data);
         } else {
-          throw new Error(response.data.message || "Failed to fetch user data.");
+          throw new Error(response.data.message || t('myProfile.fetchFailed'));
         }
       } catch (err) {
-        setError(err.response?.data?.message || err.message || "An unknown error occurred.");
+        setError(err.response?.data?.message || err.message || t('myProfile.unknownError'));
       } finally {
         setLoading(false);
       }
@@ -75,8 +78,10 @@ const MyProfile = () => {
   }, []);
 
   const handleVerify = () => {
-      alert("Account verification feature is coming soon!");
+      alert(t('myProfile.verifyComingSoon'));
   }
+
+  useTour(!loading && !!userData);
 
   if (loading) {
     return (
@@ -90,7 +95,7 @@ const MyProfile = () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-50 p-4">
         <div className="bg-rose-50 border border-rose-200 text-rose-700 px-4 py-3 rounded-xl shadow-soft max-w-md text-center" role="alert">
-          <strong className="font-bold">An Error Occurred</strong>
+          <strong className="font-bold">{t('myProfile.errorTitle')}</strong>
           <span className="block mt-1">{error}</span>
         </div>
       </div>
@@ -100,14 +105,14 @@ const MyProfile = () => {
   if (!userData) {
     return (
         <div className="flex items-center justify-center min-h-screen bg-slate-50">
-            <p className="text-slate-600">No user data found.</p>
+            <p className="text-slate-600">{t('myProfile.noUserData')}</p>
         </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-6 md:p-8 flex items-center justify-center">
-      <div className="w-full max-w-2xl card overflow-hidden animate-fade-up">
+      <div className="w-full max-w-2xl card overflow-hidden animate-fade-up" data-tour="profile-info">
         <div className="p-8">
           <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
             <div className="relative flex-shrink-0">
@@ -125,20 +130,20 @@ const MyProfile = () => {
                 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100' 
                 : 'bg-amber-50 text-amber-700 ring-1 ring-amber-100'
               }`}>
-                {userData.verified ? 'Verified Account' : 'Unverified Account'}
+                {userData.verified ? t('myProfile.verifiedAccount') : t('myProfile.unverifiedAccount')}
               </div>
             </div>
           </div>
           
           {!userData.verified && (
             <div className="mt-6 bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl text-center">
-              <p className="font-semibold">Your account needs verification.</p>
-              <p className="text-sm mt-1">Please verify your account to unlock all features.</p>
+              <p className="font-semibold">{t('myProfile.needsVerification')}</p>
+              <p className="text-sm mt-1">{t('myProfile.verifyToUnlock')}</p>
               <button 
                 onClick={handleVerify}
                 className="mt-3 btn-brand py-2 px-4 rounded-lg"
               >
-                Verify Account Now
+                {t('myProfile.verifyNow')}
               </button>
             </div>
           )}
@@ -147,28 +152,28 @@ const MyProfile = () => {
             <div className="flex items-start">
               <MailIcon />
               <div className="ml-4">
-                <p className="text-sm text-slate-500">Email</p>
+                <p className="text-sm text-slate-500">{t('myProfile.email')}</p>
                 <p className="text-lg font-medium text-slate-900">{userData.email}</p>
               </div>
             </div>
             <div className="flex items-start">
               <PhoneIcon />
               <div className="ml-4">
-                <p className="text-sm text-slate-500">Phone Number</p>
-                <p className="text-lg font-medium text-slate-900">{userData.phoneNumber || <span className="text-slate-400 italic">Not provided</span>}</p>
+                <p className="text-sm text-slate-500">{t('myProfile.phoneNumber')}</p>
+                <p className="text-lg font-medium text-slate-900">{userData.phoneNumber || <span className="text-slate-400 italic">{t('myProfile.notProvided')}</span>}</p>
               </div>
             </div>
             <div className="flex items-start">
                 <CalendarIcon />
               <div className="ml-4">
-                <p className="text-sm text-slate-500">Member Since</p>
+                <p className="text-sm text-slate-500">{t('myProfile.memberSince')}</p>
                 <p className="text-lg font-medium text-slate-900">{new Date(userData.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</p>
               </div>
             </div>
             <div className="flex items-start">
               <CalendarIcon />
               <div className="ml-4">
-                <p className="text-sm text-slate-500">Last Login</p>
+                <p className="text-sm text-slate-500">{t('myProfile.lastLogin')}</p>
                 <p className="text-lg font-medium text-slate-900">{new Date(userData.lastLogin).toLocaleString()}</p>
               </div>
             </div>

@@ -3,8 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { isPreviewMode } from '../services/dataMode';
 import { paymentInfo as previewPaymentInfo, courseCheckoutSession, previewMutation } from '../services/previewData';
+import { useTour } from '../hooks/useTour';
 
 const currencySymbol = (currency) => {
   const c = String(currency || '').toLowerCase();
@@ -14,6 +16,7 @@ const currencySymbol = (currency) => {
 
 // ---------- Main Pay Component ----------
 const Pay = () => {
+  const { t } = useTranslation();
   const { courseId } = useParams();
   const navigate = useNavigate();
 
@@ -37,7 +40,7 @@ const Pay = () => {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      toast.error('Please login first');
+      toast.error(t('pay.pleaseLogin'));
       navigate('/login');
       return;
     }
@@ -56,19 +59,19 @@ const Pay = () => {
 
           if (data.success) {
             setCheckoutStatus('success');
-            toast.success('Enrollment successful! Redirecting to course...');
+            toast.success(t('pay.enrollmentSuccess'));
             setTimeout(() => navigate(`/course/${courseId}`), 1500);
           } else {
             setCheckoutStatus('error');
             setError(data.message);
-            toast.error(data.message || 'Enrollment confirmation failed');
+            toast.error(data.message || t('pay.enrollmentConfirmFailed'));
           }
         } catch (err) {
           if (cancelled) return;
           console.error('Checkout confirmation error:', err);
           setCheckoutStatus('error');
-          setError(err.response?.data?.message || 'Failed to confirm enrollment');
-          toast.error(err.response?.data?.message || 'Failed to confirm enrollment');
+          setError(err.response?.data?.message || t('pay.confirmEnrollmentFailed'));
+          toast.error(err.response?.data?.message || t('pay.confirmEnrollmentFailed'));
         }
       };
 
@@ -93,8 +96,8 @@ const Pay = () => {
         setPaymentInfo(paymentInfoRes.data.data);
       } catch (err) {
         console.error('Payment initialization error:', err);
-        setError(err.response?.data?.message || err.message || 'Failed to initialize payment');
-        toast.error(err.response?.data?.message || 'Payment setup failed');
+        setError(err.response?.data?.message || err.message || t('pay.paymentInitFailed'));
+        toast.error(err.response?.data?.message || t('pay.paymentSetupFailed'));
       } finally {
         setLoading(false);
       }
@@ -108,7 +111,7 @@ const Pay = () => {
       setStripeButtonLoading(true);
       setTimeout(() => {
         setStripeButtonLoading(false);
-        toast.success('Enrollment successful! Redirecting to course...');
+        toast.success(t('pay.enrollmentSuccess'));
         setTimeout(() => navigate(`/course/${courseId}`), 2000);
       }, 800);
       return;
@@ -126,12 +129,12 @@ const Pay = () => {
       if (data.success && data.checkoutUrl) {
         window.location.href = data.checkoutUrl;
       } else {
-        toast.error(data.message || 'Failed to create checkout session');
+        toast.error(data.message || t('pay.checkoutSessionFailed'));
         setStripeButtonLoading(false);
       }
     } catch (err) {
       console.error('Checkout session error:', err);
-      toast.error(err.response?.data?.message || 'Failed to start checkout');
+      toast.error(err.response?.data?.message || t('pay.checkoutStartFailed'));
       setStripeButtonLoading(false);
     }
   };
@@ -139,7 +142,7 @@ const Pay = () => {
   const handleCouponSubmit = async (e) => {
     e.preventDefault();
     if (!couponCode.trim()) {
-      toast.error('Please enter a coupon code');
+      toast.error(t('pay.enterCoupon'));
       return;
     }
 
@@ -159,18 +162,20 @@ const Pay = () => {
       );
 
       if (data.success) {
-        toast.success('Coupon applied! Enrolling you now...');
+        toast.success(t('pay.couponApplied'));
         setTimeout(() => navigate(`/course/${courseId}`), 250);
       } else {
-        toast.error(data.message || 'Failed to apply coupon');
+        toast.error(data.message || t('pay.couponFailed'));
       }
     } catch (err) {
       console.error('Coupon error:', err);
-      toast.error(err.response?.data?.message || 'Coupon application failed');
+      toast.error(err.response?.data?.message || t('pay.couponApplyFailed'));
     } finally {
       setCouponLoading(false);
     }
   };
+
+  useTour(!loading && !!paymentInfo && checkoutStatus === 'idle');
 
   if (checkoutStatus === 'confirming' || checkoutStatus === 'success') {
     return (
@@ -179,8 +184,8 @@ const Pay = () => {
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
           <p className="mt-4 text-slate-600">
             {checkoutStatus === 'success'
-              ? 'Enrollment successful! Redirecting to course...'
-              : 'Confirming your payment...'}
+              ? t('pay.enrollmentSuccess')
+              : t('pay.confirmingPayment')}
           </p>
         </div>
       </div>
@@ -192,7 +197,7 @@ const Pay = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center animate-fade-in">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
-          <p className="mt-4 text-slate-600">Preparing secure payment...</p>
+          <p className="mt-4 text-slate-600">{t('pay.preparingPayment')}</p>
         </div>
       </div>
     );
@@ -207,18 +212,18 @@ const Pay = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h2 className="mt-4 text-lg font-semibold text-slate-900">
-            {isInstructorNotConfigured ? 'Stripe Payment Setup Required' : 'Payment Unavailable'}
+            {isInstructorNotConfigured ? t('pay.stripeSetupRequired') : t('pay.paymentUnavailable')}
           </h2>
           <p className="mt-2 text-slate-600">
             {isInstructorNotConfigured
-              ? 'You need to configure your Stripe credentials before students can purchase your courses.'
-              : error || 'Payment information unavailable'}
+              ? t('pay.stripeSetupText')
+              : error || t('pay.paymentInfoUnavailable')}
           </p>
           <button
             onClick={() => navigate(-1)}
             className="mt-4 btn-brand px-4 py-2"
           >
-            Go Back
+            {t('pay.goBack')}
           </button>
         </div>
       </div>
@@ -229,9 +234,9 @@ const Pay = () => {
     <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8 animate-fade-up">
-          <span className="eyebrow">Checkout</span>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">Complete Your Purchase</h1>
-          <p className="mt-2 text-slate-600">Secure checkout powered by Stripe</p>
+          <span className="eyebrow">{t('pay.checkout')}</span>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-900">{t('pay.completePurchase')}</h1>
+          <p className="mt-2 text-slate-600">{t('pay.secureCheckout')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -243,13 +248,14 @@ const Pay = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-slate-900">Credit / Debit Card</h3>
-                <p className="text-sm text-slate-500">Pay securely with Stripe</p>
+                <h3 className="text-lg font-semibold text-slate-900">{t('pay.cardTitle')}</h3>
+                <p className="text-sm text-slate-500">{t('pay.cardSubtitle')}</p>
               </div>
             </div>
             <button
               onClick={handleStripeClick}
               disabled={stripeButtonLoading}
+              data-tour="stripe-pay"
               className="w-full btn-brand py-2 px-4 flex items-center justify-center"
             >
               {stripeButtonLoading ? (
@@ -258,14 +264,14 @@ const Pay = () => {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  Redirecting to Stripe...
+                  {t('pay.redirectingToStripe')}
                 </>
               ) : (
-                'Pay with Stripe'
+                t('pay.payWithStripe')
               )}
             </button>
             <p className="mt-3 text-xs text-slate-500 text-center">
-              You'll be redirected to Stripe's secure checkout page.
+              {t('pay.redirectNote')}
             </p>
           </div>
 
@@ -277,8 +283,8 @@ const Pay = () => {
                 </svg>
               </div>
               <div className="ml-4">
-                <h3 className="text-lg font-semibold text-slate-900">Coupon code</h3>
-                <p className="text-sm text-slate-500">Enter a valid coupon code</p>
+                <h3 className="text-lg font-semibold text-slate-900">{t('pay.couponTitle')}</h3>
+                <p className="text-sm text-slate-500">{t('pay.couponSubtitle')}</p>
               </div>
             </div>
 
@@ -287,7 +293,8 @@ const Pay = () => {
                 type="text"
                 value={couponCode}
                 onChange={(e) => setCouponCode(e.target.value)}
-                placeholder="e.g. SUMMER2025"
+                placeholder={t('pay.couponPlaceholder')}
+                data-tour="coupon-input"
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent focus:outline-none"
                 disabled={couponLoading}
               />
@@ -302,39 +309,38 @@ const Pay = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Applying...
+                    {t('pay.applying')}
                   </>
                 ) : (
-                  'Apply Coupon'
+                  t('pay.applyCoupon')
                 )}
               </button>
             </form>
 
             <p className="mt-3 text-xs text-slate-500 text-center">
-              If valid, you'll be enrolled immediately for free.
+              {t('pay.couponNote')}
             </p>
           </div>
         </div>
 
         <div className="mt-8 card p-6">
-          <h3 className="text-lg font-semibold text-slate-900 mb-4">Order Summary</h3>
+          <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('pay.orderSummary')}</h3>
           <div className="flex justify-between items-center">
             <div>
               <p className="text-slate-700">{paymentInfo.courseName}</p>
-              <p className="text-sm text-slate-500">Instructor: {paymentInfo.instructorName}</p>
+              <p className="text-sm text-slate-500">{t('pay.instructor', { name: paymentInfo.instructorName })}</p>
             </div>
             <span className="text-2xl font-bold text-emerald-700">
               {currencySymbol(paymentInfo.currency)}{paymentInfo.price?.toFixed(2)}
             </span>
           </div>
-          <p className="mt-3 text-xs text-slate-500 border-t border-slate-100 pt-3">
-            100% of the course price goes directly to the instructor.
-            Stripe processing fees are handled by the platform.
+          <p className="mt-3 text-xs text-slate-500 border-t border-slate-100 pt-3" data-tour="pay-note">
+            {t('pay.priceNote')}
           </p>
         </div>
 
         <p className="mt-6 text-xs text-slate-500 text-center">
-           All payments are encrypted and processed securely via Stripe. We never store your card details.
+          {t('pay.paymentsSecure')}
         </p>
       </div>
     </div>

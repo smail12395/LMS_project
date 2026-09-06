@@ -1,6 +1,6 @@
-import React from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
-import { ToastContainer } from 'react-toastify';
+import React, { useEffect } from 'react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -10,16 +10,31 @@ import MyCourses from './pages/MyCourses';
 import MyProfile from './pages/MyProfile';
 import Navbar from './components/Navbar'; 
 import { isPreviewMode } from './services/dataMode';
+import { useTranslation } from 'react-i18next';
+import { setTourNavigator, subscribeTour } from './services/previewTourController';
 
 const App = () => {
+  const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const isHome = location.pathname === '/';
+
+  useEffect(() => {
+    setTourNavigator(navigate);
+  }, [navigate]);
+
+  useEffect(() => {
+    const unsub = subscribeTour((s) => {
+      if (s.stored === 'completed') toast.success(t('tour.completed'));
+    });
+    return unsub;
+  }, [t]);
 
   return (
     <div>
       {isPreviewMode && (
         <div className="bg-emerald-600 text-white text-center text-xs font-medium py-1.5 px-4 tracking-wide">
-          Preview Mode — data loaded from local preview-data files, no backend calls
+          {t('app.previewBanner')}
         </div>
       )}
       <Navbar /> 

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from './LanguageSwitcher';
+import { isTourActive, startTourForRoute } from '../services/previewTourController';
+
+const navTourAttr = { '/': 'nav-home', '/MyCourses': 'nav-mycourses', '/MyProfile': 'nav-profile' };
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -35,7 +41,7 @@ useEffect(() => {
     setIsLoggedIn(false);
     setUserName('');
     setDropdownOpen(false);
-    toast.success('Logged out successfully');
+    toast.success(t('nav.loggedOut'));
     navigate('/');
   };
 
@@ -47,9 +53,9 @@ useEffect(() => {
   };
 
   const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'My Courses', path: '/MyCourses' },
-    { name: 'My Profile', path: '/MyProfile' }, // placeholder
+    { name: t('nav.home'), path: '/' },
+    { name: t('nav.myCourses'), path: '/MyCourses' },
+    { name: t('nav.myProfile'), path: '/MyProfile' }, // placeholder
   ];
 
   return (
@@ -67,6 +73,7 @@ useEffect(() => {
               <NavLink
                 key={item.path}
                 to={item.path}
+                data-tour={navTourAttr[item.path]}
                 className={({ isActive }) =>
                   `px-3.5 py-2 text-sm font-medium rounded-lg transition ${
                     isActive
@@ -81,7 +88,19 @@ useEffect(() => {
           </div>
 
           {/* Right side: User / Login */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-1 sm:space-x-4">
+            <LanguageSwitcher />
+            <button
+              onClick={() => startTourForRoute()}
+              title={t('nav.restartTour')}
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {isTourActive() ? 'Guide' : 'Tour'}
+            </button>
             {isLoggedIn ? (
               <div className="relative">
                 <button
@@ -96,7 +115,7 @@ useEffect(() => {
                       onClick={handleLogout}
                       className="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                     >
-                      Logout
+                      {t('nav.logout')}
                     </button>
                   </div>
                 )}
@@ -106,7 +125,7 @@ useEffect(() => {
                 to="/login"
                 className="px-5 py-2.5 btn-brand text-sm"
               >
-                Login
+                {t('nav.login')}
               </Link>
             )}
 

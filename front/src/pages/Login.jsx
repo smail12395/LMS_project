@@ -3,9 +3,11 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { isPreviewMode } from "../services/dataMode";
 
 const Login = () => {
+  const { t } = useTranslation();
   const [state, setState] = useState("Login"); // Sign up | Login
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -41,12 +43,12 @@ const Login = () => {
 
         if (data.success) {
           localStorage.setItem("token", data.token);
-          toast.success("Registered successfully!");
+          toast.success(t('login.registeredSuccess'));
           localStorage.setItem('userName', data.name);
           window.dispatchEvent(new Event('authChange'));
           navigate("/");
         } else {
-          toast.error(data.message || "❌ Registration failed");
+          toast.error(data.message || t('login.registrationFailed'));
         }
       } else {
         const { data } = isPreviewMode
@@ -62,7 +64,7 @@ const Login = () => {
           window.dispatchEvent(new Event('authChange'));
           navigate("/");
         } else {
-          toast.error(data.message || "❌ Login failed");
+          toast.error(data.message || t('login.loginFailed'));
         }
       }
     }catch (err) {
@@ -70,7 +72,7 @@ const Login = () => {
      const message =
        err.response?.data?.message ||
        err.message ||
-       "⚠️ Server error. Try again later.";
+       t('login.serverError');
    
      toast.error(message);
 } finally {
@@ -93,22 +95,21 @@ const Login = () => {
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L6.667 9.61l9.94 3.342-.615 1.823a1 1 0 01-1.905-.275l1.487-3.5a1 1 0 00-.474-1.28l-7-3zM6.75 14.17L6 12.5l-1.5 1.5-1.5-1.5.75-1.67a1 1 0 00.5.42l3 1.085a.5.5 0 000-.93L2.75 10.38A1 1 0 002 11.32v3.36a1 1 0 00.448.832l4 2.5a1 1 0 001.104 0l4-2.5A1 1 0 0012 14.68v-3.36a1 1 0 00-.75-.94l-3 1.085a.5.5 0 000 .93l1.5.545-1.5 2.86z" />
               </svg>
-              LMS Platform
+              {t('login.platformBadge')}
             </div>
             <h2 className="mt-6 text-3xl font-extrabold tracking-tight leading-tight">
-              Learn. Build. Master.
+              {t('login.headline')}
             </h2>
             <p className="mt-4 text-emerald-100 leading-relaxed">
-              Join expert-led courses, watch protected video lessons, and track
-              your progress with interactive quizzes — all in one place.
+              {t('login.subtitle')}
             </p>
           </div>
 
           <ul className="relative space-y-3 text-sm text-emerald-50">
             {[
-              'Structured, expert-led learning paths',
-              'Secure, watermarked video lessons',
-              'Progress tracking with quizzes',
+              t('login.featurePaths'),
+              t('login.featureVideos'),
+              t('login.featureProgress'),
             ].map((feature) => (
               <li key={feature} className="flex items-center gap-2">
                 <span className="inline-flex w-5 h-5 items-center justify-center rounded-full bg-white/15">
@@ -125,15 +126,15 @@ const Login = () => {
         {/* Right form panel */}
         <div className="p-8 sm:p-10">
           <span className="inline-flex items-center gap-2 md:hidden rounded-full bg-emerald-50 border border-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-700">
-            LMS Platform
+            {t('login.platformBadge')}
           </span>
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 mt-4 md:mt-0">
-            {state === "Sign up" ? "Create Account" : "Welcome Back"}
+            {state === "Sign up" ? t('login.createAccount') : t('login.welcomeBack')}
           </h1>
           <p className="mt-2 text-slate-600">
             {state === "Sign up"
-              ? "Start learning today — it only takes a minute."
-              : "Log in to continue your learning journey."}
+              ? t('login.signupSubtitle')
+              : t('login.loginSubtitle')}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4 mt-8">
@@ -141,7 +142,7 @@ const Login = () => {
               <>
                 <input
                   type="text"
-                  placeholder="Full Name"
+                  placeholder={t('login.fullName')}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-3 border border-slate-300 rounded-xl focus:border-emerald-500 focus:ring focus:ring-emerald-100 outline-none transition"
@@ -149,7 +150,7 @@ const Login = () => {
                 />
                 <input
                   type="text"
-                  placeholder="Phone Number"
+                  placeholder={t('login.phoneNumber')}
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
                   className="w-full p-3 border border-slate-300 rounded-xl focus:border-emerald-500 focus:ring focus:ring-emerald-100 outline-none transition"
@@ -159,7 +160,7 @@ const Login = () => {
 
             <input
               type="email"
-              placeholder="Email"
+              placeholder={t('login.email')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-3 border border-slate-300 rounded-xl focus:border-emerald-500 focus:ring focus:ring-emerald-100 outline-none transition"
@@ -167,7 +168,7 @@ const Login = () => {
             />
             <input
               type="password"
-              placeholder="Password"
+              placeholder={t('login.password')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full p-3 border border-slate-300 rounded-xl focus:border-emerald-500 focus:ring focus:ring-emerald-100 outline-none transition"
@@ -183,21 +184,21 @@ const Login = () => {
             >
               {loading
                 ? state === "Sign up"
-                  ? "Registering..."
-                  : "Logging in..."
+                  ? t('login.registering')
+                  : t('login.loggingIn')
                 : state === "Sign up"
-                ? "Sign Up"
-                : "Login"}
+                ? t('login.signUp')
+                : t('nav.login')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-slate-600">
-            {state === "Sign up" ? "Already have an account?" : "Don't have an account?"}{" "}
+            {state === "Sign up" ? t('login.haveAccount') : t('login.noAccount')}{" "}
             <span
               className="text-primary cursor-pointer font-semibold hover:underline"
               onClick={toggleState}
             >
-              {state === "Sign up" ? "Click here to login" : "Click here to sign up"}
+              {state === "Sign up" ? t('login.clickToLogin') : t('login.clickToSignup')}
             </span>
           </p>
         </div>

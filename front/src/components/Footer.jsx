@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Instagram,
   GraduationCap,
@@ -10,12 +11,13 @@ import {
 } from 'lucide-react';
 
 const Footer = ({ categories = [] }) => {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
 
   const column = [
-    { title: 'Platform', links: [{ label: 'Home', to: '/' }, { label: 'My Courses', to: '/MyCourses' }, { label: 'My Profile', to: '/MyProfile' }, { label: 'Create Account', to: '/login' }] },
-    { title: 'Company', links: [{ label: 'About', to: '/' }, { label: 'Instructors', to: '/' }, { label: 'Careers', to: '/' }, { label: 'Contact', to: '/' }] },
-    { title: 'Support', links: [{ label: 'Help Center', to: '/' }, { label: 'Payment & Refunds', to: '/' }, { label: 'Privacy Policy', to: '/' }, { label: 'Terms of Service', to: '/' }] },
+    { title: t('footer.platform'), links: [{ label: t('footer.home'), to: '/' }, { label: t('footer.myCourses'), to: '/MyCourses' }, { label: t('footer.myProfile'), to: '/MyProfile' }, { label: t('footer.createAccount'), to: '/login' }] },
+    { title: t('footer.company'), links: [{ label: t('footer.about'), to: '/' }, { label: t('footer.instructors'), to: '/' }, { label: t('footer.careers'), to: '/' }, { label: t('footer.contact'), to: '/' }] },
+    { title: t('footer.support'), links: [{ label: t('footer.helpCenter'), to: '/' }, { label: t('footer.paymentRefunds'), to: '/' }, { label: t('footer.privacyPolicy'), to: '/' }, { label: t('footer.terms'), to: '/' }] },
   ];
 
   return (
@@ -28,22 +30,21 @@ const Footer = ({ categories = [] }) => {
               LMS<span className="text-emerald-400">.</span>
             </Link>
             <p className="mt-4 text-sm text-slate-400 leading-relaxed max-w-xs">
-              A secure professional learning platform. Master in-demand skills with expert
-              instructors and protected, practical course content.
+              {t('footer.tagline')}
             </p>
             <div className="mt-6 flex items-center gap-3">
               <a
                 href="https://instagram.com/ornyms"
                 target="_blank"
                 rel="noopener noreferrer"
-                aria-label="Instagram"
+                aria-label={t('footer.instagram')}
                 className="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition-colors"
               >
                 <Instagram size={16} />
               </a>
               <a
                 href="mailto:support@lms.example.com"
-                aria-label="Email"
+                aria-label={t('footer.email')}
                 className="w-9 h-9 rounded-lg bg-slate-800/80 hover:bg-emerald-600 hover:text-white flex items-center justify-center transition-colors"
               >
                 <Mail size={16} />
@@ -68,9 +69,12 @@ const Footer = ({ categories = [] }) => {
 
           {/* Categories */}
           <div>
-            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Categories</h4>
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">{t('footer.categories')}</h4>
             <ul className="mt-4 space-y-2.5">
-              {(categories.length ? categories : ['Web Development', 'Programming', 'Design', 'Data & AI']).slice(0, 4).map((cat) => (
+              {(categories.length
+                ? categories
+                : [t('footer.catWeb'), t('footer.catProgramming'), t('footer.catDesign'), t('footer.catData')]
+              ).slice(0, 4).map((cat) => (
                 <li key={cat}>
                   <Link to="/" className="text-sm text-slate-400 hover:text-emerald-400 transition-colors">
                     {cat}
@@ -83,14 +87,14 @@ const Footer = ({ categories = [] }) => {
 
         <div className="mt-12 pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-slate-500">
-            © {year} LMS. All rights reserved.
+            {t('footer.rightsReserved', { year })}
           </p>
           <div className="flex items-center gap-5 text-xs text-slate-500">
             <span className="inline-flex items-center gap-1.5">
-              <ShieldCheck size={14} className="text-emerald-500" /> Secure protected content
+              <ShieldCheck size={14} className="text-emerald-500" /> {t('footer.secureContent')}
             </span>
             <span className="inline-flex items-center gap-1.5">
-              Made with <Heart size={12} className="text-emerald-500" /> for learners
+              {t('footer.madeWith')} <Heart size={12} className="text-emerald-500" />
             </span>
           </div>
         </div>

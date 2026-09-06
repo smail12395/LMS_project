@@ -109,7 +109,6 @@ const DashInstructor = () => {
 
   useEffect(() => {
     if (!token || role !== "instructor") {
-      toast.warning("Access denied. Instructors only.");
       navigate("/login");
       return;
     }

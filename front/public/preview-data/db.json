@@ -1,12 +1,12 @@
-{
+﻿{
   "publicCourses": [
     {
       "_id": "course-web-dev",
       "name": "JavaScript Essentials",
-      "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+      "description": "Master modern JavaScript from the ground up â€” variables, functions, DOM, async patterns and more, with real projects.",
       "price": 192,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-1.png",
       "instructorName": "Ahmed Salem",
       "instructorSpeciality": "Senior Web Developer",
       "courseSpeciality": "Web Development",
@@ -23,7 +23,7 @@
       "description": "Learn user research, wireframing, prototyping and design systems to ship products people love.",
       "price": 49,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-2.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-2.png",
       "instructorName": "Lina Hassan",
       "instructorSpeciality": "Product Designer",
       "courseSpeciality": "Design",
@@ -37,10 +37,10 @@
     {
       "_id": "course-data",
       "name": "Python for Data Science",
-      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone â€” start your data journey today.",
       "price": 0,
       "isFree": true,
-      "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-3.png",
       "instructorName": "Omar Nabil",
       "instructorSpeciality": "Data Scientist",
       "courseSpeciality": "Data & AI",
@@ -54,10 +54,10 @@
     {
       "_id": "course-marketing",
       "name": "Digital Marketing Fundamentals",
-      "description": "SEO, content, social and paid campaigns — a complete playbook to grow any brand online.",
+      "description": "SEO, content, social and paid campaigns â€” a complete playbook to grow any brand online.",
       "price": 29,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-4.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-4.png",
       "instructorName": "Rana Adel",
       "instructorSpeciality": "Growth Marketer",
       "courseSpeciality": "Marketing",
@@ -73,10 +73,10 @@
     {
       "_id": "course-web-dev",
       "name": "JavaScript Essentials",
-      "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+      "description": "Master modern JavaScript from the ground up â€” variables, functions, DOM, async patterns and more, with real projects.",
       "price": 192,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-1.png",
       "instructorName": "Ahmed Salem",
       "instructorSpeciality": "Senior Web Developer",
       "courseSpeciality": "Web Development",
@@ -166,7 +166,7 @@
       "description": "Learn user research, wireframing, prototyping and design systems to ship products people love.",
       "price": 49,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-2.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-2.png",
       "instructorName": "Lina Hassan",
       "instructorSpeciality": "Product Designer",
       "courseSpeciality": "Design",
@@ -175,7 +175,7 @@
       "content": [
         {
           "_id": "cont-b-free",
-          "title": "Free Preview — The Design Process",
+          "title": "Free Preview â€” The Design Process",
           "contentType": "postText",
           "availability": "free",
           "contentData": "Every great product starts with a clear process: research, define, ideate, prototype and test. This free lesson walks you through the first two steps.",
@@ -213,10 +213,10 @@
     {
       "_id": "course-data",
       "name": "Python for Data Science",
-      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+      "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone â€” start your data journey today.",
       "price": 0,
       "isFree": true,
-      "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-3.png",
       "instructorName": "Omar Nabil",
       "instructorSpeciality": "Data Scientist",
       "courseSpeciality": "Data & AI",
@@ -243,7 +243,7 @@
       "videoSeries": [
         {
           "_id": "vid-c1",
-          "videoTitle": "Series Intro — Pandas Basics",
+          "videoTitle": "Series Intro â€” Pandas Basics",
           "duration": 360,
           "order": 0,
           "filename": "course-video-1.mp4",
@@ -263,10 +263,10 @@
     {
       "_id": "course-marketing",
       "name": "Digital Marketing Fundamentals",
-      "description": "SEO, content, social and paid campaigns — a complete playbook to grow any brand online.",
+      "description": "SEO, content, social and paid campaigns â€” a complete playbook to grow any brand online.",
       "price": 29,
       "isFree": false,
-      "imageCover": "/preview-data/storage/courses/course-cover-4.svg",
+      "imageCover": "/preview-data/storage/courses/course-cover-4.png",
       "instructorName": "Rana Adel",
       "instructorSpeciality": "Growth Marketer",
       "courseSpeciality": "Marketing",
@@ -275,7 +275,7 @@
       "content": [
         {
           "_id": "cont-d-free",
-          "title": "Free Preview — SEO in 5 Minutes",
+          "title": "Free Preview â€” SEO in 5 Minutes",
           "contentType": "postText",
           "availability": "free",
           "contentData": "Search engines decide what to show based on relevance and authority. Keywords, meta descriptions and internal links are the basics you need to know.",
@@ -290,9 +290,9 @@
       "course": {
         "_id": "course-web-dev",
         "name": "JavaScript Essentials",
-        "description": "Master modern JavaScript from the ground up — variables, functions, DOM, async patterns and more, with real projects.",
+        "description": "Master modern JavaScript from the ground up â€” variables, functions, DOM, async patterns and more, with real projects.",
         "price": 192,
-        "imageCover": "/preview-data/storage/courses/course-cover-1.svg",
+        "imageCover": "/preview-data/storage/courses/course-cover-1.png",
         "instructorName": "Ahmed Salem"
       },
       "enrolledAt": "2026-07-15T12:30:00.000Z"
@@ -301,9 +301,9 @@
       "course": {
         "_id": "course-data",
         "name": "Python for Data Science",
-        "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone — start your data journey today.",
+        "description": "Analyze data with pandas, numpy and matplotlib. Free for everyone â€” start your data journey today.",
         "price": 0,
-        "imageCover": "/preview-data/storage/courses/course-cover-3.svg",
+        "imageCover": "/preview-data/storage/courses/course-cover-3.png",
         "instructorName": "Omar Nabil"
       },
       "enrolledAt": "2026-07-03T08:00:00.000Z"

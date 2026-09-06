@@ -2,8 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import { isPreviewMode } from '../services/dataMode';
 import { courseById, quizAnswers, previewMutation } from '../services/previewData';
+import { useTour } from '../hooks/useTour';
+import { setPreviewContext } from '../services/previewTourController';
 import {
   Play, FileText, Type, Image as ImageIcon, Clock, Users, BookOpen,
   CheckCircle2, ChevronRight, Lock, HelpCircle,
@@ -40,6 +43,7 @@ const WatermarkOverlay = React.forwardRef(({ email, active }, ref) => {
     <div
       ref={ref}
       data-watermark="true"
+      data-tour="video-watermark"
       style={{
         position: 'absolute',
         zIndex: 10,
@@ -84,6 +88,7 @@ const CustomVideoPlayer = ({
   className = '',
   children,
 }) => {
+  const { t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -263,7 +268,7 @@ const CustomVideoPlayer = ({
       <button
         type="button"
         onClick={togglePlay}
-        aria-label={isPlaying ? 'Pause' : 'Play'}
+        aria-label={isPlaying ? t('player.pause') : t('player.play')}
         className="absolute inset-0 z-[15] flex items-center justify-center cursor-pointer bg-transparent focus:outline-none"
       >
         {!isPlaying && (
@@ -309,11 +314,11 @@ const CustomVideoPlayer = ({
         </div>
 
         {/* Control row */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2" data-tour="video-controls">
           <button
             type="button"
             onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? t('player.pause') : t('player.play')}
             className="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-500 text-white hover:bg-emerald-400 active:scale-95 transition-all shadow-lg shadow-emerald-900/30"
           >
             {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" className="ml-0.5" />}
@@ -322,7 +327,7 @@ const CustomVideoPlayer = ({
           <button
             type="button"
             onClick={() => seekBy(-5)}
-            aria-label="Backward 5 seconds"
+            aria-label={t('player.backward5')}
             className="vc-btn vc-btn-ghost"
           >
             <RotateCcw size={17} />
@@ -331,7 +336,7 @@ const CustomVideoPlayer = ({
           <button
             type="button"
             onClick={() => seekBy(5)}
-            aria-label="Forward 5 seconds"
+            aria-label={t('player.forward5')}
             className="vc-btn vc-btn-ghost relative"
           >
             <RotateCw size={17} />
@@ -343,7 +348,7 @@ const CustomVideoPlayer = ({
             <button
               type="button"
               onClick={toggleMute}
-              aria-label={muted ? 'Unmute' : 'Mute'}
+              aria-label={muted ? t('player.unmute') : t('player.mute')}
               className="vc-btn vc-btn-ghost"
             >
               {volumeIcon === VolumeX && <VolumeX size={18} />}
@@ -359,7 +364,7 @@ const CustomVideoPlayer = ({
               onChange={(e) => changeVolume(e.target.value)}
               onClick={(e) => e.stopPropagation()}
               className="vc-slider w-16 md:w-24"
-              aria-label="Volume"
+              aria-label={t('player.volume')}
             />
           </div>
 
@@ -367,7 +372,7 @@ const CustomVideoPlayer = ({
           <button
             type="button"
             onClick={toggleMute}
-            aria-label={muted ? 'Unmute' : 'Mute'}
+            aria-label={muted ? t('player.unmute') : t('player.mute')}
             className="vc-btn vc-btn-ghost sm:hidden"
           >
             {volumeIcon === VolumeX ? <VolumeX size={18} /> : volumeIcon === Volume1 ? <Volume1 size={18} /> : <Volume2 size={18} />}
@@ -384,7 +389,7 @@ const CustomVideoPlayer = ({
             <button
               type="button"
               onClick={toggleSpeed}
-              aria-label="Playback speed"
+              aria-label={t('player.playbackSpeed')}
               className="vc-btn vc-btn-ghost"
             >
               <Gauge size={17} />
@@ -413,7 +418,7 @@ const CustomVideoPlayer = ({
           <button
             type="button"
             onClick={toggleFullscreen}
-            aria-label="Fullscreen"
+            aria-label={t('player.fullscreen')}
             className="vc-btn vc-btn-ghost"
           >
             <Maximize size={18} />
@@ -437,14 +442,15 @@ const COURSE_IMAGE_FALLBACK =
   `);
 
 const CONTENT_TYPE_CONFIG = {
-  pdf:    { icon: FileText, bg: 'bg-rose-50', text: 'text-rose-600', ring: 'ring-rose-200', label: 'PDF Document', btnBg: 'bg-rose-50 hover:bg-rose-100 text-rose-700' },
-  video:  { icon: Play, bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-200', label: 'Video', btnBg: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700' },
-  postText: { icon: Type, bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-200', label: 'Text', btnBg: 'bg-blue-50 hover:bg-blue-100 text-blue-700' },
-  image:  { icon: ImageIcon, bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-200', label: 'Image', btnBg: 'bg-amber-50 hover:bg-amber-100 text-amber-700' },
-  default: { icon: BookOpen, bg: 'bg-slate-100', text: 'text-slate-600', ring: 'ring-slate-200', label: 'Resource', btnBg: 'bg-slate-100 hover:bg-slate-200 text-slate-700' },
+  pdf:    { icon: FileText, bg: 'bg-rose-50', text: 'text-rose-600', ring: 'ring-rose-200', labelKey: 'type.pdf', btnBg: 'bg-rose-50 hover:bg-rose-100 text-rose-700' },
+  video:  { icon: Play, bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-200', labelKey: 'type.video', btnBg: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700' },
+  postText: { icon: Type, bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-200', labelKey: 'type.text', btnBg: 'bg-blue-50 hover:bg-blue-100 text-blue-700' },
+  image:  { icon: ImageIcon, bg: 'bg-amber-50', text: 'text-amber-600', ring: 'ring-amber-200', labelKey: 'type.image', btnBg: 'bg-amber-50 hover:bg-amber-100 text-amber-700' },
+  default: { icon: BookOpen, bg: 'bg-slate-100', text: 'text-slate-600', ring: 'ring-slate-200', labelKey: 'type.resource', btnBg: 'bg-slate-100 hover:bg-slate-200 text-slate-700' },
 };
 
 const Course = () => {
+  const { t } = useTranslation();
   const { courseId } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
@@ -555,7 +561,7 @@ const Course = () => {
       });
       setQuizzesView('take');
     } else {
-      toast.info('You have no remaining attempts for this video.');
+      toast.info(t('quiz.noRemaining'));
     }
   };
 
@@ -569,7 +575,7 @@ const Course = () => {
     } else {
       if (quizSession.shot === 'first') {
         if (quizSession.remainingWrong.length > 0) {
-          toast.info(`You finished your first shot in this video. Now starting second shot for ${quizSession.remainingWrong.length} quiz(zes).`);
+          toast.info(t('quiz.startingSecondShot', { count: quizSession.remainingWrong.length }));
           const wrongQuizzes = quizSession.quizzes.filter(q =>
             quizSession.remainingWrong.includes(q._id)
           );
@@ -582,13 +588,13 @@ const Course = () => {
             remainingWrong: []
           });
         } else {
-          toast.success('You have completed all quizzes for this video!');
+          toast.success(t('quiz.completedAll'));
           setQuizzesView('list');
           setQuizSession(null);
           fetchUserAnswers();
         }
       } else {
-        toast.success('You have completed all quizzes for this video!');
+        toast.success(t('quiz.completedAll'));
         setQuizzesView('list');
         setQuizSession(null);
         fetchUserAnswers();
@@ -602,12 +608,12 @@ const Course = () => {
     stopTimer();
 
     if (selectedOption === null) {
-      toast.warning('Please select an answer');
+      toast.warning(t('quiz.pleaseSelect'));
       setIsSubmitting(false);
       return;
     }
     if (!quizSession || !quizSession.quizzes[quizSession.currentIndex]) {
-      toast.error('Quiz session expired. Please restart.');
+      toast.error(t('quiz.sessionExpired'));
       setIsSubmitting(false);
       return;
     }
@@ -640,7 +646,7 @@ const Course = () => {
       }
     } catch (error) {
       console.error('Error saving answer:', error);
-      const msg = error.response?.data?.message || 'Failed to save answer';
+      const msg = error.response?.data?.message || t('quiz.failedToSave');
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -682,7 +688,7 @@ const Course = () => {
         setLoading(true);
         const token = localStorage.getItem('token');
         if (!token) {
-          toast.error('Please login first');
+          toast.error(t('course.pleaseLogin'));
           navigate('/login');
           return;
         }
@@ -700,13 +706,13 @@ const Course = () => {
           setSelectedVideo(null);
           setVideoStreamUrl(null);
         } else {
-          setError(data.message || 'Failed to load course');
+          setError(data.message || t('course.failedToLoad'));
         }
       } catch (err) {
         console.error(err);
-        setError(err.response?.data?.message || 'Error loading course');
+        setError(err.response?.data?.message || t('course.errorLoading'));
         if (err.response?.status === 401) {
-          toast.error('Session expired. Please login again.');
+          toast.error(t('course.sessionExpired'));
           navigate('/login');
         }
       } finally {
@@ -825,7 +831,7 @@ const Course = () => {
     setVideoError(true);
 
     if (retryCount < MAX_RETRIES) {
-      toast.info(`Retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+      toast.info(t('player.retrying', { count: retryCount + 1, max: MAX_RETRIES }));
       setTimeout(() => {
         setRetryCount((prev) => prev + 1);
         setVideoStreamUrl((prev) => {
@@ -834,7 +840,7 @@ const Course = () => {
         });
       }, 1500);
     } else {
-      toast.error('Unable to play video. Please try another video or contact support.');
+      toast.error(t('player.unableToPlay'));
     }
   };
 
@@ -851,9 +857,9 @@ const Course = () => {
     const now = new Date();
     const diffTime = Math.abs(now - date);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (diffDays === 1) return t('date.yesterday');
+    if (diffDays <= 7) return t('date.daysAgo', { count: diffDays });
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
   const sortedContent = course?.content
@@ -875,12 +881,23 @@ const Course = () => {
     setQuizzesView('list');
   };
 
+  useTour(!loading && !!course, { isEnrolled, courseId });
+
+  // Keep the tour controller's page context in sync with the loaded course so
+  // the "Tour" button (which runs a click-only, page-local tour) can resolve the
+  // correct enrollment-based block even when no guided tour is currently running.
+  useEffect(() => {
+    if (!loading && course && courseId) {
+      setPreviewContext({ isEnrolled, courseId });
+    }
+  }, [loading, course, courseId, isEnrolled]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center animate-fade-in">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-[3px] border-primary border-t-transparent"></div>
-          <p className="mt-4 text-sm text-slate-500 font-medium">Loading course...</p>
+          <p className="mt-4 text-sm text-slate-500 font-medium">{t('course.loadingCourse')}</p>
         </div>
       </div>
     );
@@ -895,10 +912,10 @@ const Course = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Something went wrong</h3>
-          <p className="text-slate-500 text-sm mb-6">{error || 'Course not found'}</p>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">{t('course.somethingWentWrong')}</h3>
+          <p className="text-slate-500 text-sm mb-6">{error || t('course.courseNotFound')}</p>
           <button onClick={() => navigate('/')} className="btn-brand w-full px-6 py-3">
-            Back to Home
+            {t('course.backToHome')}
           </button>
         </div>
       </div>
@@ -913,7 +930,7 @@ const Course = () => {
           <div className="lg:flex gap-8">
             {/* Cover Image */}
             <div className="lg:w-96 flex-shrink-0 mb-6 lg:mb-0">
-              <div className="relative rounded-2xl overflow-hidden shadow-soft-lg aspect-[4/3] bg-slate-100">
+              <div className="relative rounded-2xl overflow-hidden shadow-soft-lg aspect-video bg-slate-100">
                 <img
                   className="w-full h-full object-cover"
                   src={course.imageCover || COURSE_IMAGE_FALLBACK}
@@ -928,27 +945,27 @@ const Course = () => {
                 {!isEnrolled && (
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-amber-400 text-amber-900 px-2.5 py-1 rounded-lg text-xs font-bold uppercase tracking-wider shadow-lg">
                     <Lock size={12} />
-                    Preview
+                    {t('course.preview')}
                   </div>
                 )}
                 {isEnrolled && (
                   <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-primary text-white px-2.5 py-1 rounded-lg text-xs font-bold shadow-lg">
                     <CheckCircle2 size={12} />
-                    Enrolled
+                    {t('course.enrolled')}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Course Info */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0" data-tour="course-info">
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 <span className="eyebrow">
-                  {course.courseSpeciality || course.instructorSpeciality || 'Course'}
+                  {course.courseSpeciality || course.instructorSpeciality || t('course.course')}
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs text-slate-500">
                   <Users size={13} />
-                  {course.numberOfStudents} students
+                  {t('course.students', { count: course.numberOfStudents })}
                 </span>
               </div>
 
@@ -967,7 +984,7 @@ const Course = () => {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-900">{course.instructorName}</p>
-                  <p className="text-xs text-slate-400">Instructor</p>
+                  <p className="text-xs text-slate-400">{t('course.instructor')}</p>
                 </div>
               </div>
 
@@ -976,48 +993,50 @@ const Course = () => {
                 {course.isFree && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 text-xs font-bold">
                     <CheckCircle2 size={13} />
-                    Free Course
+                    {t('course.freeCourse')}
                   </span>
                 )}
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
                   <Video size={13} />
-                  {sortedVideos.length} Videos
+                  {t('course.videos', { count: sortedVideos.length })}
                 </span>
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
                   <FileText size={13} />
-                  {sortedContent.length} Materials
+                  {t('course.materials', { count: sortedContent.length })}
                 </span>
                 {totalQuizzes > 0 && (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 text-xs font-medium text-slate-600">
                     <FileQuestion size={13} />
-                    {totalQuizzes} Quiz{totalQuizzes !== 1 ? 'zes' : ''}
+                    {totalQuizzes === 1 ? t('course.quizzes', { count: totalQuizzes }) : t('course.quizzesPlural', { count: totalQuizzes })}
                   </span>
                 )}
               </div>
 
               {/* CTA */}
-              {course.isFree ? (
-                <button
-                  onClick={() => switchTab('videos')}
-                  className="group btn-brand px-7 py-3 text-sm"
-                >
-                  {isEnrolled ? 'Start Course' : 'Watch Free Course'}
-                  <Play size={16} className="ml-1 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ) : !isEnrolled ? (
-                <button
-                  onClick={() => navigate(`/pay/${courseId}`)}
-                  className="group btn-brand px-7 py-3 text-sm"
-                >
-                  Buy Now — ${course.price?.toFixed(2)}
-                  <ChevronRight size={16} className="ml-1 group-hover:translate-x-0.5 transition-transform" />
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-semibold">
-                  <CheckCircle2 size={16} />
-                  You're enrolled
-                </span>
-              )}
+              <div data-tour="course-pricing">
+                {course.isFree ? (
+                  <button
+                    onClick={() => switchTab('videos')}
+                    className="group btn-brand px-7 py-3 text-sm"
+                  >
+                    {isEnrolled ? t('course.startCourse') : t('course.watchFreeCourse')}
+                    <Play size={16} className="ml-1 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                ) : !isEnrolled ? (
+                  <button
+                    onClick={() => navigate(`/pay/${courseId}`)}
+                    className="group btn-brand px-7 py-3 text-sm"
+                  >
+                    {t('course.buyNow', { price: course.price?.toFixed(2) })}
+                    <ChevronRight size={16} className="ml-1 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-sm font-semibold">
+                    <CheckCircle2 size={16} />
+                    {t('course.youreEnrolled')}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1026,14 +1045,15 @@ const Course = () => {
       {/* ========== TABS ========== */}
       <div className="bg-white border-b border-slate-200/70 sticky top-16 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex gap-0 -mb-px" aria-label="Course sections">
+          <nav className="flex gap-0 -mb-px" aria-label={t('course.tabs.aria')} data-tour="tabs-bar">
             {[
-              { key: 'content', label: 'Materials', icon: BookOpen, count: sortedContent.length },
-              { key: 'videos', label: 'Videos', icon: Play, count: sortedVideos.length },
-              { key: 'quizzes', label: 'Quizzes', icon: FileQuestion, count: totalQuizzes },
-            ].map(({ key, label, icon: Icon, count }) => (
+              { key: 'content', label: t('course.tabs.materials'), icon: BookOpen, count: sortedContent.length, marker: 'content-tab' },
+              { key: 'videos', label: t('course.tabs.videos'), icon: Play, count: sortedVideos.length, marker: 'videos-tab' },
+              { key: 'quizzes', label: t('course.tabs.quizzes'), icon: FileQuestion, count: totalQuizzes, marker: 'quizzes-tab' },
+            ].map(({ key, label, icon: Icon, count, marker }) => (
               <button
                 key={key}
+                data-tour={marker}
                 onClick={() => switchTab(key)}
                 className={`
                   relative flex items-center gap-2 px-4 sm:px-5 py-3.5 text-sm font-medium transition-colors whitespace-nowrap
@@ -1078,7 +1098,7 @@ const Course = () => {
                       <svg className="w-12 h-12 text-rose-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      <p className="text-sm text-slate-300">Video unavailable. <button onClick={() => handlePlayContentVideo(selectedContentVideo)} className="text-primary underline font-medium">Retry</button></p>
+                      <p className="text-sm text-slate-300">{t('content.videoUnavailable')} <button onClick={() => handlePlayContentVideo(selectedContentVideo)} className="text-primary underline font-medium">{t('content.retry')}</button></p>
                     </div>
                   ) : (
                     <CustomVideoPlayer
@@ -1105,7 +1125,7 @@ const Course = () => {
                       {watermarkTampered && (
                         <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80">
                           <p className="text-white text-center px-6 py-3 bg-rose-900/80 rounded-lg text-sm font-medium">
-                            Playback protection was disabled. Video playback has been paused.
+                            {t('player.protectionDisabled')}
                           </p>
                         </div>
                       )}
@@ -1118,7 +1138,7 @@ const Course = () => {
                     onClick={() => { setSelectedContentVideo(null); setContentVideoStreamUrl(null); }}
                     className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg px-2.5 py-1.5 transition"
                   >
-                    <X size={14} /> Close
+                    <X size={14} /> {t('content.close')}
                   </button>
                 </div>
               </div>
@@ -1136,7 +1156,7 @@ const Course = () => {
                 >
                   <img
                     src={selectedImageUrl}
-                    alt="Course content"
+                    alt={t('content.imageAlt')}
                     className="max-h-full max-w-full object-contain"
                   />
                   <button
@@ -1157,8 +1177,8 @@ const Course = () => {
 
               if (contentToShow.length === 0) {
                 const emptyMessage = !isEnrolled
-                  ? 'No public content available.'
-                  : 'No course materials available.';
+                  ? t('content.noPublicContent')
+                  : t('content.noMaterials');
                 return (
                   <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/70 shadow-soft">
                     <BookOpen className="mx-auto h-10 w-10 text-slate-300 mb-3" />
@@ -1168,7 +1188,7 @@ const Course = () => {
               }
 
               return (
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="materials-list">
                   {contentToShow.map((item, idx) => {
                     const isNew =
                       item.createdAt &&
@@ -1208,12 +1228,12 @@ const Course = () => {
                             <p className="text-sm font-semibold text-slate-900 truncate">{item.title}</p>
                             {isNew && isEnrolled && (
                               <span className="flex-shrink-0 px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-bold uppercase tracking-wider">
-                                New
+                                {t('content.new')}
                               </span>
                             )}
                           </div>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            {cfg.label}
+                            {t(cfg.labelKey)}
                             {item.createdAt && <span className="ml-1.5">&middot; {formatDate(item.createdAt)}</span>}
                           </p>
                         </div>
@@ -1223,17 +1243,17 @@ const Course = () => {
                           <div className="flex-shrink-0">
                             {item.contentType === 'pdf' && item.contentData && (
                               <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${cfg.btnBg}`}>
-                                <ExternalLink size={12} /> View
+                                <ExternalLink size={12} /> {t('content.view')}
                               </span>
                             )}
                             {item.contentType === 'video' && (
                               <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${cfg.btnBg}`}>
-                                <Play size={12} /> Play
+                                <Play size={12} /> {t('content.play')}
                               </span>
                             )}
                             {item.contentType === 'image' && item.contentData && (
                               <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition ${cfg.btnBg}`}>
-                                <ImageIcon size={12} /> View
+                                <ImageIcon size={12} /> {t('content.view')}
                               </span>
                             )}
                             {item.contentType === 'postText' && item.contentData && (
@@ -1259,16 +1279,16 @@ const Course = () => {
             <div className="flex-1 min-w-0">
               {(isEnrolled || course?.isFree) && selectedVideo && videoStreamUrl ? (
                 <div className="mb-6">
-                  <div className="relative bg-black rounded-2xl overflow-hidden shadow-soft-lg">
+                  <div className="relative bg-black rounded-2xl overflow-hidden shadow-soft-lg" data-tour="video-player">
                     {videoError ? (
                       <div className="w-full h-full aspect-video flex flex-col items-center justify-center bg-slate-900 text-white p-6">
                         <svg className="w-14 h-14 text-rose-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                         </svg>
-                        <h3 className="text-lg font-bold mb-1">Video Unavailable</h3>
+                        <h3 className="text-lg font-bold mb-1">{t('player.videoUnavailableTitle')}</h3>
                         <p className="text-slate-400 text-sm text-center mb-4">
-                          We're having trouble playing this video.
-                          {retryCount >= MAX_RETRIES && ' Please try another video.'}
+                          {t('player.troublePlaying')}
+                          {retryCount >= MAX_RETRIES && t('player.pleaseTryAnother')}
                         </p>
                         {retryCount < MAX_RETRIES && (
                           <button
@@ -1279,7 +1299,7 @@ const Course = () => {
                             }}
                             className="px-4 py-2 bg-primary text-white text-sm rounded-lg hover:bg-emerald-700 transition"
                           >
-                            Try Again
+                            {t('player.tryAgain')}
                           </button>
                         )}
                       </div>
@@ -1303,7 +1323,7 @@ const Course = () => {
                           className="w-full h-full object-contain"
                         >
                           <source src={videoStreamUrl} type="video/mp4" />
-                          Your browser does not support the video tag.
+                          {t('player.videoNotSupported')}
                         </video>
                         {selectedVideo && userEmail && (
                           <WatermarkOverlay ref={watermarkRef} email={userEmail} active={!watermarkTampered && !videoError} />
@@ -1311,7 +1331,7 @@ const Course = () => {
                         {watermarkTampered && (
                           <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/80">
                             <p className="text-white text-center px-6 py-3 bg-rose-900/80 rounded-lg text-sm font-medium">
-                              Playback protection was disabled. Video playback has been paused.
+                              {t('player.protectionDisabled')}
                             </p>
                           </div>
                         )}
@@ -1337,21 +1357,21 @@ const Course = () => {
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                     <Play size={28} className="text-primary" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">Select a video to start learning</h3>
-                  <p className="text-sm text-slate-500 mt-1">Choose a video from the playlist on the right.</p>
+                  <h3 className="text-lg font-bold text-slate-900">{t('player.selectVideoToStart')}</h3>
+                  <p className="text-sm text-slate-500 mt-1">{t('player.chooseVideo')}</p>
                 </div>
               ) : !isEnrolled && !course?.isFree ? (
                 <div className="mb-6 bg-white rounded-2xl border border-slate-200/70 shadow-soft p-10 text-center">
                   <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
                     <Lock size={28} className="text-amber-500" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-900">Enroll to watch videos</h3>
-                  <p className="text-sm text-slate-500 mt-1 mb-4">Unlock all {sortedVideos.length} videos in this course.</p>
+                  <h3 className="text-lg font-bold text-slate-900">{t('player.enrollToWatch')}</h3>
+                  <p className="text-sm text-slate-500 mt-1 mb-4">{t('player.unlockVideos', { count: sortedVideos.length })}</p>
                   <button
                     onClick={() => navigate(`/pay/${courseId}`)}
                     className="group btn-brand px-6 py-2.5 text-sm"
                   >
-                    Enroll Now — ${course.price?.toFixed(2)}
+                    {t('course.enrollNow', { price: course.price?.toFixed(2) })}
                     <ChevronRight size={16} className="ml-1 group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </div>
@@ -1364,9 +1384,9 @@ const Course = () => {
                 <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Video size={16} className="text-primary" />
-                    Playlist
+                    {t('player.playlist')}
                   </h3>
-                  <span className="text-xs text-slate-400 font-medium">{sortedVideos.length} videos</span>
+                  <span className="text-xs text-slate-400 font-medium">{t('player.videos', { count: sortedVideos.length })}</span>
                 </div>
 
                 {sortedVideos.length > 0 ? (
@@ -1381,6 +1401,13 @@ const Course = () => {
                           key={video._id}
                           onClick={() => handleSelectVideo(video)}
                           disabled={!canWatch}
+                          data-tour={
+                            index === 0
+                              ? canWatch
+                                ? 'playlist-video'
+                                : 'locked-video'
+                              : undefined
+                          }
                           className={`
                             w-full text-left px-4 py-3 flex items-center gap-3 transition-all duration-150
                             ${isSelected
@@ -1429,7 +1456,7 @@ const Course = () => {
                 ) : (
                   <div className="py-10 text-center">
                     <Video className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                    <p className="text-sm text-slate-400">No videos available</p>
+                    <p className="text-sm text-slate-400">{t('player.noVideos')}</p>
                   </div>
                 )}
               </div>
@@ -1445,10 +1472,10 @@ const Course = () => {
                 {sortedVideos.length === 0 || totalQuizzes === 0 ? (
                   <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/70 shadow-soft">
                     <FileQuestion className="mx-auto h-10 w-10 text-slate-300 mb-3" />
-                    <p className="text-sm text-slate-500 font-medium">No quizzes available yet.</p>
+                    <p className="text-sm text-slate-500 font-medium">{t('quiz.noQuizzes')}</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3" data-tour="quiz-list">
                     {sortedVideos.map((video) => {
                       const videoQuizzes = video.quizzes || [];
                       if (videoQuizzes.length === 0) return null;
@@ -1472,23 +1499,25 @@ const Course = () => {
 
                               <div className="flex flex-wrap items-center gap-2 mt-2.5 ml-10">
                                 <span className="text-xs text-slate-400 font-medium">
-                                  {videoQuizzes.length} quiz{videoQuizzes.length !== 1 ? 'zes' : ''}
+                                  {videoQuizzes.length === 1
+                                    ? t('quiz.quiz', { count: videoQuizzes.length })
+                                    : t('quiz.quizPlural', { count: videoQuizzes.length })}
                                 </span>
 
                                 {firstShotRemaining > 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60">
-                                    1st attempt: {firstShotRemaining}
+                                    {t('quiz.firstAttempt', { count: firstShotRemaining })}
                                   </span>
                                 )}
                                 {secondShotRemaining > 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
-                                    2nd attempt: {secondShotRemaining}
+                                    {t('quiz.secondAttempt', { count: secondShotRemaining })}
                                   </span>
                                 )}
                                 {totalRemaining === 0 && (
                                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-500">
                                     <CheckCircle2 size={11} />
-                                    Completed
+                                    {t('quiz.completed')}
                                   </span>
                                 )}
                               </div>
@@ -1503,7 +1532,7 @@ const Course = () => {
                                   : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                               }`}
                             >
-                              {totalRemaining > 0 ? 'Take Quiz' : 'Done'}
+                              {totalRemaining > 0 ? t('quiz.takeQuiz') : t('quiz.done')}
                             </button>
                           </div>
 
@@ -1532,7 +1561,7 @@ const Course = () => {
                   className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-800 transition"
                 >
                   <ArrowLeft size={16} />
-                  Back to quizzes
+                  {t('quiz.backToQuizzes')}
                 </button>
 
                 {quizSession && quizSession.quizzes[quizSession.currentIndex] && (
@@ -1543,7 +1572,7 @@ const Course = () => {
                         <div>
                           <p className="text-sm font-bold text-slate-900">{quizSession.videoTitle}</p>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            {quizSession.shot === 'first' ? '1st attempt' : '2nd attempt'}
+                            {quizSession.shot === 'first' ? t('quiz.firstAttemptLabel') : t('quiz.secondAttemptLabel')}
                           </p>
                         </div>
                         <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium">
@@ -1651,7 +1680,7 @@ const Course = () => {
                                   : 'bg-primary text-white hover:bg-emerald-700 shadow-sm hover:shadow-md'
                               }`}
                             >
-                              {isSubmitting ? 'Submitting...' : 'Submit Answer'}
+                              {isSubmitting ? t('quiz.submitting') : t('quiz.submitAnswer')}
                             </button>
                           ) : (
                             <div className="space-y-3">
@@ -1662,8 +1691,10 @@ const Course = () => {
                                     <span className="flex items-center gap-2 text-sm font-medium">
                                       {isCorrect ? <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" /> : <CircleDot size={18} className="text-rose-500 flex-shrink-0" />}
                                       {isCorrect
-                                        ? 'Correct! Well done.'
-                                        : `Incorrect. ${quizSession.shot === 'second' ? `The correct answer is: ${currentQuiz.options[currentQuiz.correctAnswer]}` : 'You have one more chance later.'}`
+                                        ? t('quiz.correct')
+                                        : quizSession.shot === 'second'
+                                          ? t('quiz.incorrectSecond', { answer: currentQuiz.options[currentQuiz.correctAnswer] })
+                                          : t('quiz.incorrectChance')
                                       }
                                     </span>
                                   </div>
@@ -1675,14 +1706,14 @@ const Course = () => {
                                   onClick={() => { setAnswerSubmitted(false); moveToNextQuiz(); }}
                                   className="w-full py-3 px-4 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-emerald-700 transition shadow-sm hover:shadow-md"
                                 >
-                                  Next Question
+                                  {t('quiz.nextQuestion')}
                                 </button>
                               ) : (
                                 <button
                                   onClick={() => { setQuizzesView('list'); setQuizSession(null); fetchUserAnswers(); }}
                                   className="w-full py-3 px-4 bg-slate-900 text-white rounded-xl font-semibold text-sm hover:bg-slate-800 transition"
                                 >
-                                  Finish Quiz
+                                  {t('quiz.finishQuiz')}
                                 </button>
                               )}
                             </div>

@@ -56,7 +56,11 @@ const VideoSeries = () => {
   /* ===================== QUIZ MODAL ===================== */
   const [showQuizModal, setShowQuizModal] = useState(false);
   const [activeVideoIndex, setActiveVideoIndex] = useState(null);
+  // true → editing an EXISTING video (persisted via API to the course)
+  // false → editing a NEW video being added in the form below
+  const [editingExistingVideo, setEditingExistingVideo] = useState(false);
   const [modalQuizzes, setModalQuizzes] = useState([]);
+  const [savingQuiz, setSavingQuiz] = useState(false);
 
   /* ===================== DELETE VIDEO FUNCTION ===================== */
   const showConfirmDialog = useCallback((title, message, confirmText, cancelText) => {
@@ -223,19 +227,101 @@ const VideoSeries = () => {
   }, []);
 
   /* ===================== OPEN QUIZ MODAL ===================== */
+  // Opens the quiz manager for a NEW video being added in the form below.
   const openQuizModal = (index) => {
     setActiveVideoIndex(index);
+    setEditingExistingVideo(false);
     setModalQuizzes([...videos[index].quizzes]);
     setShowQuizModal(true);
   };
 
+  // Opens the quiz manager for an EXISTING video already in the course.
+  const openExistingVideoQuizModal = (videoIndex) => {
+    setActiveVideoIndex(videoIndex);
+    setEditingExistingVideo(true);
+    setModalQuizzes([...(existingVideos[videoIndex]?.quizzes || [])]);
+    setShowQuizModal(true);
+  };
+
   /* ===================== SAVE QUIZZES ===================== */
-  const saveQuizzes = () => {
-    const updatedVideos = [...videos];
-    updatedVideos[activeVideoIndex].quizzes = [...modalQuizzes];
-    setVideos(updatedVideos);
+  const saveQuizzes = async () => {
+    // Skip blank quiz entries (no question and no filled options) before saving.
+    const cleanedQuizzes = modalQuizzes.filter(
+      (q) => (q.question || "").trim() !== "" ||
+        (q.options || []).some((opt) => (opt || "").trim() !== "")
+    ).map((q) => ({
+      question: q.question || "",
+      options: (q.options || ["", "", "", ""]).slice(0, 4),
+      correctAnswer: parseInt(q.correctAnswer) || 0,
+      points: parseInt(q.points) || 10,
+    }));
+
+    // Existing video → persist to the backend (or simulate in preview mode).
+    if (editingExistingVideo) {
+      const video = existingVideos[activeVideoIndex];
+      const videoId = getVideoIdString(video?._id);
+      if (!videoId) {
+        toast.error("Video ID is missing. Cannot save quiz.");
+        return;
+      }
+
+      try {
+        setSavingQuiz(true);
+
+        if (isPreviewMode) {
+          previewMutation("Saving quiz");
+          // Mirror the edit locally so the UI reflects the change
+          // (nothing is persisted to the backend in preview mode).
+          setExistingVideos((prev) =>
+            prev.map((v, idx) =>
+              idx === activeVideoIndex ? { ...v, quizzes: cleanedQuizzes } : v
+            )
+          );
+        } else {
+          const response = await axios.put(
+            `${import.meta.env.VITE_BACKEND_URL}/api/instructor/course/${courseId}/video-series/${videoId}/quiz`,
+            { quizzes: cleanedQuizzes },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (!response.data.success) {
+            throw new Error(response.data.message || "Failed to save quiz");
+          }
+          // Reflect the saved quizzes in the list immediately.
+          setExistingVideos((prev) =>
+            prev.map((v, idx) =>
+              idx === activeVideoIndex ? { ...v, quizzes: response.data.quizzes } : v
+            )
+          );
+        }
+
+        toast.success(
+          cleanedQuizzes.length > 0
+            ? "Quiz saved successfully"
+            : "Quizzes removed from video"
+        );
+        setShowQuizModal(false);
+        setActiveVideoIndex(null);
+        setEditingExistingVideo(false);
+      } catch (error) {
+        console.error("Save quiz error:", error);
+        toast.error(
+          error.response?.data?.message || "Failed to save quiz. Please try again."
+        );
+      } finally {
+        setSavingQuiz(false);
+      }
+      return;
+    }
+
+    // New video → just keep quizzes on the local form state (saved on upload).
+    setVideos((prev) => {
+      const updated = [...prev];
+      updated[activeVideoIndex] = { ...updated[activeVideoIndex], quizzes: cleanedQuizzes };
+      return updated;
+    });
     setShowQuizModal(false);
     setActiveVideoIndex(null);
+    setEditingExistingVideo(false);
   };
 
   /* ===================== ADD NEW QUIZ ===================== */
@@ -451,14 +537,30 @@ const VideoSeries = () => {
   const renderQuizModal = () => {
     if (!showQuizModal) return null;
 
+    // Identify the video being edited (existing or new).
+    const editingVideo = editingExistingVideo
+      ? existingVideos[activeVideoIndex]
+      : videos[activeVideoIndex];
+    const editingTitle =
+      editingExistingVideo
+        ? editingVideo?.videoTitle
+        : editingVideo?.title;
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           {/* Modal Header */}
           <div className="flex justify-between items-center p-6 border-b">
-            <h2 className="text-2xl font-bold text-slate-900">
-              Manage Quizzes for Video {activeVideoIndex + 1}
-            </h2>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Manage Quiz{modalQuizzes.length === 1 ? "" : "zes"}
+              </h2>
+              {editingTitle ? (
+                <p className="text-sm text-slate-500 mt-1 truncate max-w-md">
+                  {editingTitle}
+                </p>
+              ) : null}
+            </div>
             <button
               onClick={() => setShowQuizModal(false)}
               className="text-slate-500 hover:text-slate-700 text-2xl"
@@ -562,9 +664,16 @@ const VideoSeries = () => {
               </button>
               <button
                 onClick={saveQuizzes}
-                className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                disabled={savingQuiz}
+                className={`px-6 py-2 rounded-lg transition-colors ${
+                  savingQuiz
+                    ? "bg-slate-300 text-slate-500 cursor-not-allowed"
+                    : "bg-emerald-600 text-white hover:bg-emerald-700"
+                }`}
               >
-                Save Quizzes ({modalQuizzes.length})
+                {savingQuiz
+                  ? "Saving..."
+                  : `Save Quiz${modalQuizzes.length === 1 ? "" : "zes"} (${modalQuizzes.length})`}
               </button>
             </div>
           </div>
@@ -731,7 +840,7 @@ const VideoSeries = () => {
                       <div className="flex items-center space-x-4">
                         <span className="flex items-center">
                           <span className="mr-1">❓</span>
-                          {video.quizzes?.length || 0} quizzes
+                          {video.quizzes?.length || 0} quiz{video.quizzes?.length === 1 ? "" : "zes"}
                         </span>
                         <span className="flex items-center">
                           <span className="mr-1">#</span>
@@ -766,6 +875,21 @@ const VideoSeries = () => {
                         )}
                       </button>
                     </div>
+                    {videoId && (
+                      <button
+                        onClick={() => openExistingVideoQuizModal(index)}
+                        className={`mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors focus:outline-none focus:ring-2 ${
+                          video.quizzes?.length > 0
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 focus:ring-emerald-500'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-400'
+                        }`}
+                      >
+                        <span>{video.quizzes?.length > 0 ? "✏️" : "➕"}</span>
+                        {video.quizzes?.length > 0
+                          ? `Manage Quiz${video.quizzes.length === 1 ? "" : "zes"} (${video.quizzes.length})`
+                          : "Add Quiz"}
+                      </button>
+                    )}
                     {videoId && (
                       <div className="mt-2 text-xs text-slate-500 truncate">
                         ID: {videoId.substring(0, 12)}...
